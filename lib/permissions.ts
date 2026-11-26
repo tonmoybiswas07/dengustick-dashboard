@@ -17,6 +17,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "models:evaluate",
     "users:manage",
     "settings:manage",
+    "alerts:manage",
   ],
 
   health_authority: [
@@ -40,6 +41,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "alerts:view",
     "analytics:view",
     "reports:view",
+    "alerts:manage",
   ],
 
   field_worker: [

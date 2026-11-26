@@ -39,6 +39,7 @@ import {
 
 import Sidebar from "../sidebar/Sidebar";
 import { navigation } from "@/app/constants/navigation";
+import NotificationBell from "./NotificationBell";
 
 interface NavbarProps {
   user: {
@@ -66,22 +67,19 @@ export default function Navbar({ user }: NavbarProps) {
 
   const currentPage = navigation
     .flatMap((group) => group.items)
-    .filter((item) =>
-      hasPermission(user.role, item.permission)
-    )
+    .filter((item) => hasPermission(user.role, item.permission))
     .find(
-      (item) =>
-        pathname === item.href ||
-        pathname.startsWith(`${item.href}/`)
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
     );
 
-  const initials = user.name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word.charAt(0))
-    .join("")
-    .toUpperCase() || "DV";
+  const initials =
+    user.name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase() || "DV";
 
   const handleLogout = async () => {
     try {
@@ -125,14 +123,9 @@ export default function Navbar({ user }: NavbarProps) {
             className="w-64 border-none p-0"
             showCloseButton={false}
           >
-            <SheetTitle className="sr-only">
-              Navigation
-            </SheetTitle>
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
 
-            <Sidebar
-              role={user.role}
-              onNavigate={() => setOpen(false)}
-            />
+            <Sidebar role={user.role} onNavigate={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
 
@@ -152,30 +145,19 @@ export default function Navbar({ user }: NavbarProps) {
           variant="ghost"
           size="icon"
           aria-label="Toggle theme"
-          onClick={() =>
-            setTheme(resolvedTheme === "dark" ? "light" : "dark")
-          }
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
           <Sun className="size-5 dark:hidden" />
           <Moon className="hidden size-5 dark:block" />
         </Button>
 
-        {hasPermission(user.role, "alerts:view") && (
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/alerts" aria-label="View alerts">
-              <Bell size={20} />
-            </Link>
-          </Button>
-        )}
+        {hasPermission(user.role, "alerts:view") && <NotificationBell />}
 
         <div className="h-8 w-px bg-border" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="h-auto gap-2 px-1 md:px-2"
-            >
+            <Button variant="ghost" className="h-auto gap-2 px-1 md:px-2">
               <Avatar className="size-9">
                 <AvatarFallback className="bg-primary/10 font-semibold text-primary">
                   {initials}
@@ -183,9 +165,7 @@ export default function Navbar({ user }: NavbarProps) {
               </Avatar>
 
               <div className="hidden text-left md:block">
-                <p className="text-sm font-semibold">
-                  {user.name}
-                </p>
+                <p className="text-sm font-semibold">{user.name}</p>
 
                 <p className="text-xs text-muted-foreground">
                   {roleLabels[user.role] || "User"}
@@ -199,9 +179,7 @@ export default function Navbar({ user }: NavbarProps) {
           <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuLabel>
               <div className="space-y-1">
-                <p className="font-semibold">
-                  {user.name}
-                </p>
+                <p className="font-semibold">{user.name}</p>
 
                 <p className="truncate text-xs font-normal text-muted-foreground">
                   {user.email}
