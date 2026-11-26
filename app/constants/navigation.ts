@@ -68,7 +68,7 @@ export const navigation: NavigationGroup[] = [
         title: "Field Operations",
         href: "/field-operations",
         icon: UsersRound,
-        permission: "operations:manage",
+        permission: "operations:view",
       },
       {
         title: "Alerts",
