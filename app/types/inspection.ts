@@ -1,3 +1,5 @@
+import type { InspectionReview } from "@/app/types/review";
+
 export type InspectionStatus =
   | "pending"
   | "under_review"
@@ -23,6 +25,7 @@ export interface Inspection {
   inspectorId: string;
   inspectorName: string;
   regionId: string;
+
   location: {
     address: string;
     district: string;
@@ -30,6 +33,7 @@ export interface Inspection {
     latitude: number;
     longitude: number;
   };
+
   breedingSiteType: BreedingSiteType;
   images: string[];
   detectionResult: DetectionResult;
@@ -37,6 +41,9 @@ export interface Inspection {
   confidenceScore: number | null;
   status: InspectionStatus;
   notes: string;
+
+  review?: InspectionReview;
+
   inspectedAt: Date;
   createdAt: Date;
   updatedAt: Date;
