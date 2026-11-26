@@ -1,12 +1,24 @@
-import Navbar from "@/components/dashboard/navbar/Navbar";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { auth } from "@/lib/auth";
 import Sidebar from "@/components/dashboard/sidebar/Sidebar";
+import Navbar from "@/components/dashboard/navbar/Navbar";
 
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/login");
+  }
+
   return (
     <div className="min-h-dvh bg-background">
       <div className="fixed inset-y-0 left-0 z-40 hidden lg:block">
