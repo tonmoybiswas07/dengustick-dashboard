@@ -18,6 +18,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "users:manage",
     "settings:manage",
     "alerts:manage",
+    "reports:create",
   ],
 
   health_authority: [
@@ -28,6 +29,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "analytics:view",
     "reports:view",
     "reports:export",
+    "reports:create",
   ],
 
   supervisor: [
@@ -42,6 +44,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "analytics:view",
     "reports:view",
     "alerts:manage",
+    "reports:create",
+    "reports:export",
   ],
 
   field_worker: [
@@ -58,6 +62,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "analytics:view",
     "reports:view",
     "models:evaluate",
+    "reports:create",
+    "reports:export",
   ],
 };
 

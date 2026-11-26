@@ -23,4 +23,5 @@ export type Permission =
     | "settings:manage"
     | "operations:view"
     | "operations:update"
-    | "alerts:manage";
+    | "alerts:manage"
+    | "reports:create";
