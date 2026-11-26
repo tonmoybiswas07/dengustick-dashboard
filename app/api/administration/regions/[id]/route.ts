@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { MongoServerError, ObjectId } from "mongodb";
 
 import { authorizeAdmin } from "@/lib/admin-access";
 
@@ -19,7 +19,7 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
-    const { error } = await authorizeAdmin();
+    const { error } = await authorizeAdmin(request);
 
     if (error) return error;
 
@@ -46,10 +46,11 @@ export async function PATCH(
     }
 
     const data = validation.data;
+    const regionId = new ObjectId(id);
 
     const existing = await regionsCollection.findOne({
       code: data.code,
-      _id: { $ne: new ObjectId(id) },
+      _id: { $ne: regionId },
     });
 
     if (existing) {
@@ -63,12 +64,12 @@ export async function PATCH(
       const [activeUsers, activeTasks] =
         await Promise.all([
           usersCollection.countDocuments({
-            regionId: id,
+            regionId: regionId.toHexString(),
             banned: { $ne: true },
           }),
 
           fieldTasksCollection.countDocuments({
-            regionId: id,
+            regionId: regionId.toHexString(),
 
             status: {
               $in: ["assigned", "in_progress"],
@@ -87,8 +88,10 @@ export async function PATCH(
       }
     }
 
+    await regionsCollection.createIndex({ code: 1 }, { unique: true });
+
     const result = await regionsCollection.updateOne(
-      { _id: new ObjectId(id) },
+      { _id: regionId },
 
       {
         $set: {
@@ -110,6 +113,17 @@ export async function PATCH(
       message: "Region updated successfully",
     });
   } catch (error) {
+    if (
+      error instanceof MongoServerError &&
+      error.code === 11000 &&
+      error.keyPattern?.code === 1
+    ) {
+      return Response.json(
+        { message: "Region code already exists" },
+        { status: 409 }
+      );
+    }
+
     console.error(error);
 
     return Response.json(

@@ -7,7 +7,6 @@ import {
   BellRing,
   ChartNoAxesCombined,
   FileText,
-  BrainCircuit,
   Settings,
 } from "lucide-react";
 
@@ -68,7 +67,7 @@ export const navigation: NavigationGroup[] = [
         title: "Field Operations",
         href: "/field-operations",
         icon: UsersRound,
-        permission: "operations:view",
+        permission: "operations:manage",
       },
       {
         title: "Alerts",
@@ -92,12 +91,6 @@ export const navigation: NavigationGroup[] = [
         href: "/reports",
         icon: FileText,
         permission: "reports:view",
-      },
-      {
-        title: "Model Evaluation",
-        href: "/model-evaluation",
-        icon: BrainCircuit,
-        permission: "models:evaluate",
       },
     ],
   },

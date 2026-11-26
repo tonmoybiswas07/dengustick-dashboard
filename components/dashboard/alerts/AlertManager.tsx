@@ -302,7 +302,7 @@ export default function AlertManager({
         <Tabs
           value={status}
           onValueChange={(value) => {
-            setStatus(value);
+            setStatus(value ?? "all");
             setPage(1);
           }}
         >
@@ -328,7 +328,7 @@ export default function AlertManager({
         <Select
           value={severity}
           onValueChange={(value) => {
-            setSeverity(value);
+            setSeverity(value ?? "all");
             setPage(1);
           }}
         >
@@ -395,7 +395,7 @@ export default function AlertManager({
                   role,
                   alert.sourceType === "inspection"
                     ? "inspections:view"
-                    : "operations:view"
+                    : "operations:manage"
                 )}
                 onRead={(id) =>
                   updateAlert(id, "read")

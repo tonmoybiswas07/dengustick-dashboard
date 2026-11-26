@@ -22,7 +22,7 @@ export default function MapStats({
       background: "bg-teal-500/10",
     },
     {
-      title: "Positive Detection",
+      title: "AI Positive",
       value: inspections.filter(
         (item) => item.detectionResult === "positive"
       ).length,
@@ -31,7 +31,7 @@ export default function MapStats({
       background: "bg-red-500/10",
     },
     {
-      title: "Negative Detection",
+      title: "AI Negative",
       value: inspections.filter(
         (item) => item.detectionResult === "negative"
       ).length,
@@ -40,7 +40,7 @@ export default function MapStats({
       background: "bg-emerald-500/10",
     },
     {
-      title: "Inconclusive",
+      title: "AI Inconclusive",
       value: inspections.filter(
         (item) => item.detectionResult === "inconclusive"
       ).length,

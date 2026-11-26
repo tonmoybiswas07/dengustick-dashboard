@@ -1,14 +1,26 @@
 import "server-only";
 
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { getSession } from "@/lib/session";
 import { hasPermission } from "@/lib/permissions";
 import type { Permission } from "@/app/types/auth";
 
-export async function authorizeAPI(permission: Permission) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+export async function authorizeAPI(permission: Permission, request?: Request) {
+  if (request) {
+    const origin = request.headers.get("origin");
+    const expectedOrigin = new URL(process.env.BETTER_AUTH_URL || request.url).origin;
+
+    if (
+      (origin !== null && origin !== expectedOrigin) ||
+      request.headers.get("sec-fetch-site") === "cross-site"
+    ) {
+      return {
+        session: null,
+        error: Response.json({ message: "Invalid request origin" }, { status: 403 }),
+      } as const;
+    }
+  }
+
+  const session = await getSession();
 
   if (!session) {
     return {

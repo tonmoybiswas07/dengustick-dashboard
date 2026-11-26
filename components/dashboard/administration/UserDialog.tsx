@@ -215,14 +215,11 @@ export default function UserDialog({
           <div className="space-y-2">
             <Label>User Role</Label>
 
-            <Select
+            <Select<typeof form.role>
               value={form.role}
-              onValueChange={(value) =>
-                setForm({
-                  ...form,
-                  role: value as typeof form.role,
-                })
-              }
+              onValueChange={(role) => {
+                if (role !== null) setForm((previous) => ({ ...previous, role }));
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -255,7 +252,7 @@ export default function UserDialog({
                 onValueChange={(value) =>
                   setForm({
                     ...form,
-                    regionId: value,
+                    regionId: value ?? "",
                   })
                 }
               >

@@ -1,16 +1,13 @@
 import { ScanEye, ShieldCheck, University } from "lucide-react";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import LoginForm from "@/components/auth/LoginForm";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 
 export default async function LoginPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
-  if (session) {
+  if (session && !session.user.banned) {
     redirect("/dashboard");
   }
 

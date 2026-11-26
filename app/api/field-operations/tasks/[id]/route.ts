@@ -2,7 +2,6 @@ import { ObjectId } from "mongodb";
 import type { Filter } from "mongodb";
 
 import { authorizeAPI } from "@/lib/api-auth";
-import { hasPermission } from "@/lib/permissions";
 
 import {
   fieldTasksCollection,
@@ -23,7 +22,7 @@ export async function PATCH(
 ) {
   try {
     const { session, error } = await authorizeAPI(
-      "operations:update"
+      "operations:manage", request
     );
 
     if (error) return error;
@@ -79,18 +78,6 @@ export async function PATCH(
       );
     }
 
-    const canManage = hasPermission(
-      user.role,
-      "operations:manage"
-    );
-
-    if (data.status === "cancelled" && !canManage) {
-      return Response.json(
-        { message: "Permission denied" },
-        { status: 403 }
-      );
-    }
-
     const allowedTransitions: Record<string, string[]> = {
       assigned: ["in_progress", "cancelled"],
       in_progress: ["completed", "cancelled"],
@@ -99,7 +86,7 @@ export async function PATCH(
     };
 
     if (
-      !allowedTransitions[task.status].includes(data.status)
+      !allowedTransitions[task.status]?.includes(data.status)
     ) {
       return Response.json(
         { message: "Invalid task status transition" },

@@ -14,7 +14,7 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
-    const { session, error } = await authorizeAPI("ai:review");
+    const { session, error } = await authorizeAPI("ai:review", request);
 
     if (error) return error;
 

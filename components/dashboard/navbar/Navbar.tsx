@@ -1,17 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bell,
   Menu,
   Moon,
   Sun,
   ChevronDown,
-  UserRound,
-  Settings,
   LogOut,
 } from "lucide-react";
 
@@ -107,15 +103,17 @@ export default function Navbar({ user }: NavbarProps) {
     <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b bg-card px-4 md:px-6">
       <div className="flex items-center gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              aria-label="Open navigation"
-            >
-              <Menu size={22} />
-            </Button>
+          <SheetTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Open navigation"
+              />
+            }
+          >
+            <Menu size={22} />
           </SheetTrigger>
 
           <SheetContent
@@ -156,24 +154,22 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="h-8 w-px bg-border" />
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-auto gap-2 px-1 md:px-2">
-              <Avatar className="size-9">
-                <AvatarFallback className="bg-primary/10 font-semibold text-primary">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+          <DropdownMenuTrigger render={<Button variant="ghost" className="h-auto gap-2 px-1 md:px-2" />}>
+            <Avatar className="size-9">
+              <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
 
-              <div className="hidden text-left md:block">
-                <p className="text-sm font-semibold">{user.name}</p>
+            <div className="hidden text-left md:block">
+              <p className="text-sm font-semibold">{user.name}</p>
 
-                <p className="text-xs text-muted-foreground">
-                  {roleLabels[user.role] || "User"}
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                {roleLabels[user.role] || "User"}
+              </p>
+            </div>
 
-              <ChevronDown className="hidden size-4 md:block" />
-            </Button>
+            <ChevronDown className="hidden size-4 md:block" />
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-64">
@@ -190,24 +186,6 @@ export default function Navbar({ user }: NavbarProps) {
                 </p>
               </div>
             </DropdownMenuLabel>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem asChild>
-              <Link href="/settings">
-                <UserRound size={16} />
-                Profile
-              </Link>
-            </DropdownMenuItem>
-
-            {hasPermission(user.role, "settings:manage") && (
-              <DropdownMenuItem asChild>
-                <Link href="/settings">
-                  <Settings size={16} />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-            )}
 
             <DropdownMenuSeparator />
 

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Filter } from "mongodb";
 
 import { authorizeAPI } from "@/lib/api-auth";
@@ -7,6 +8,8 @@ import { getInspectionFilter } from "@/lib/inspection-access";
 import type { Inspection } from "@/app/types/inspection";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI("ai:review");
 
@@ -25,10 +28,10 @@ export async function GET(request: Request) {
 
     const status = searchParams.get("status") ?? "pending";
 
-    const page = Math.max(
-      1,
-      Math.floor(Number(searchParams.get("page")) || 1)
-    );
+    const rawPage = Number(searchParams.get("page") ?? 1);
+    const page = Number.isSafeInteger(rawPage)
+      ? Math.max(1, Math.min(rawPage, 100000))
+      : 1;
 
     const limit = 12;
 
@@ -86,7 +89,10 @@ export async function GET(request: Request) {
 
     return Response.json({
       success: true,
-      data: inspections,
+      data: inspections.map((inspection) => ({
+        ...inspection,
+        _id: inspection._id.toHexString(),
+      })),
       stats: {
         total,
         pending,

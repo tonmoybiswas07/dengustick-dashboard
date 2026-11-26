@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Filter } from "mongodb";
 
 import { authorizeAPI } from "@/lib/api-auth";
@@ -7,6 +8,8 @@ import { getAlertFilter } from "@/lib/alert-access";
 import type { Alert } from "@/app/types/alert";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
       "alerts:view"

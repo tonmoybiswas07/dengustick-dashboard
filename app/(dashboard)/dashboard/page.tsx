@@ -6,9 +6,12 @@ import DetectionChart from "@/components/dashboard/overview/DetectionChart";
 import RecentInspections from "@/components/dashboard/overview/RecentInspections";
 import PriorityAlerts from "@/components/dashboard/overview/PriorityAlerts";
 
+import { requirePermission } from "@/lib/session";
 import { Badge } from "@/components/ui/badge";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requirePermission("dashboard:view");
+
   return (
     <section className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">

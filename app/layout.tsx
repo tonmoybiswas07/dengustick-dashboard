@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Suspense } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import ThemeProvider from "@/components/dashboard/providers/ThemeProvider";
 
-const geistSans = Geist({
+const geistSans = localFont({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  src: "../node_modules/next/dist/next-devtools/server/font/geist-latin.woff2",
+  weight: "100 900",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  src: "../node_modules/next/dist/next-devtools/server/font/geist-mono-latin.woff2",
+  weight: "100 900",
 });
 
 export const metadata: Metadata = {
@@ -37,7 +40,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <Suspense fallback={<main aria-busy="true" className="p-6">Loading…</main>}>
+            {children}
+          </Suspense>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>

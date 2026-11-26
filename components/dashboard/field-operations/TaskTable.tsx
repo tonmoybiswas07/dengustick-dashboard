@@ -12,7 +12,7 @@ import {
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 import {
   Table,
@@ -89,12 +89,6 @@ export default function TaskTable({
               </TableRow>
             ) : (
               tasks.map((task) => {
-                const overdue =
-                  new Date(task.deadline).getTime() <
-                    Date.now() &&
-                  ["assigned", "in_progress"].includes(
-                    task.status
-                  );
 
                 return (
                   <TableRow key={task._id}>
@@ -136,7 +130,7 @@ export default function TaskTable({
                         ).toLocaleDateString("en-GB")}
                       </p>
 
-                      {overdue && (
+                      {task.isOverdue && (
                         <span className="text-xs text-red-600">
                           Overdue
                         </span>
@@ -154,30 +148,24 @@ export default function TaskTable({
 
                     <TableCell className="text-right">
                       {task.inspectionId ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                        >
-                          <Link
-                            href={`/inspections/${task.inspectionId}`}
-                          >
-                            Inspection
-                          </Link>
-                        </Button>
+                        <Link href={`/inspections/${task.inspectionId}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                          Inspection
+                        </Link>
                       ) : canUpdate &&
                         ["assigned", "in_progress"].includes(
                           task.status
                         ) ? (
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Task actions"
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </Button>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Task actions"
+                              />
+                            }
+                          >
+                            <MoreHorizontal className="size-4" />
                           </DropdownMenuTrigger>
 
                           <DropdownMenuContent align="end">

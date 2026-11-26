@@ -1,5 +1,5 @@
 import type {
-  Inspection,
+  InspectionDTO,
   DetectionResult,
 } from "@/app/types/inspection";
 
@@ -13,19 +13,7 @@ export interface InspectionReview {
   reviewedAt: Date;
 }
 
-export interface ReviewInspection
-  extends Omit<
-    Inspection,
-    "_id" | "createdAt" | "updatedAt" | "inspectedAt" | "review"
-  > {
-  _id: string;
-  createdAt: string;
-  updatedAt: string;
-  inspectedAt: string;
-  review?: Omit<InspectionReview, "reviewedAt"> & {
-    reviewedAt: string;
-  };
-}
+export type ReviewInspection = InspectionDTO;
 
 export interface ReviewStatistics {
   total: number;

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { ObjectId } from "mongodb";
 import { headers } from "next/headers";
 
@@ -14,6 +15,8 @@ import {
 } from "@/lib/validations/administration";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
     const { error } = await authorizeAdmin();
 
@@ -83,7 +86,7 @@ export async function GET(request: Request) {
 
     return Response.json({
       success: true,
-      data: users,
+      data: users.map((user) => ({ ...user, _id: user._id.toHexString() })),
 
       pagination: {
         page,
@@ -103,7 +106,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { error } = await authorizeAdmin();
+    const { error } = await authorizeAdmin(request);
 
     if (error) return error;
 
@@ -122,9 +125,9 @@ export async function POST(request: Request) {
 
     const data = validation.data;
 
-    if (data.role !== "admin") {
+    if (data.role !== "admin" && data.regionId) {
       const region = await regionsCollection.findOne({
-        _id: new ObjectId(data.regionId!),
+        _id: new ObjectId(data.regionId),
         isActive: true,
       });
 

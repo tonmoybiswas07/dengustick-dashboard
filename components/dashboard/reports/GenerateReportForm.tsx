@@ -46,13 +46,11 @@ export default function GenerateReportForm({
   districts,
   onSuccess,
 }: GenerateReportFormProps) {
-  const today = new Date(
-    Date.now() + 6 * 3600000
-  )
-    .toISOString()
-    .slice(0, 10);
-
   const [loading, setLoading] = useState(false);
+
+  const [today] = useState(() =>
+    new Date(Date.now() + 6 * 3600000).toISOString().slice(0, 10)
+  );
 
   const [form, setForm] = useState({
     title: "",
@@ -165,7 +163,7 @@ export default function GenerateReportForm({
               <Select
                 value={form.type}
                 onValueChange={(value) =>
-                  updateField("type", value)
+                  updateField("type", value ?? "")
                 }
               >
                 <SelectTrigger className="w-full">
@@ -232,7 +230,7 @@ export default function GenerateReportForm({
               <Select
                 value={form.district}
                 onValueChange={(value) =>
-                  updateField("district", value)
+                  updateField("district", value ?? "")
                 }
               >
                 <SelectTrigger className="w-full">

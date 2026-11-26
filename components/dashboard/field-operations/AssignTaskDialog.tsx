@@ -179,7 +179,7 @@ export default function AssignTaskDialog({
             <Select
               value={form.assignedTo}
               onValueChange={(value) =>
-                updateField("assignedTo", value)
+                updateField("assignedTo", value ?? "")
               }
             >
               <SelectTrigger className="w-full">
@@ -256,7 +256,7 @@ export default function AssignTaskDialog({
               <Select
                 value={form.priority}
                 onValueChange={(value) =>
-                  updateField("priority", value)
+                  updateField("priority", value ?? "")
                 }
               >
                 <SelectTrigger className="w-full">

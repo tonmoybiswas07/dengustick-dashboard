@@ -14,7 +14,7 @@ import {
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 import {
   severityColors,
@@ -130,16 +130,10 @@ export default function AlertCard({
 
             <div className="flex flex-wrap gap-2 pt-1">
               {canViewSource && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                >
-                  <Link href={sourceHref}>
-                    View Source
-                    <ArrowUpRight className="size-3.5" />
-                  </Link>
-                </Button>
+                <Link href={sourceHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                  View Source
+                  <ArrowUpRight className="size-3.5" />
+                </Link>
               )}
 
               {!alert.isRead && (

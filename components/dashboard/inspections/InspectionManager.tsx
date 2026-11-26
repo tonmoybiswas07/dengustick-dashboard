@@ -12,7 +12,7 @@ import InspectionFilters from "./InspectionFilters";
 import InspectionTable from "./InspectionTable";
 import AddInspectionForm from "./AddInspectionForm";
 
-import type { Inspection } from "@/app/types/inspection";
+import type { InspectionDTO } from "@/app/types/inspection";
 
 import {
   AlertDialog,
@@ -34,7 +34,7 @@ export default function InspectionManager({
   role,
   regionId,
 }: InspectionManagerProps) {
-  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [inspections, setInspections] = useState<InspectionDTO[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -52,7 +52,7 @@ export default function InspectionManager({
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [selected, setSelected] = useState<Inspection | null>(null);
+  const [selected, setSelected] = useState<InspectionDTO | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -131,7 +131,7 @@ export default function InspectionManager({
     setFormOpen(true);
   }
 
-  function handleEdit(inspection: Inspection) {
+  function handleEdit(inspection: InspectionDTO) {
     setSelected(inspection);
     setFormOpen(true);
   }

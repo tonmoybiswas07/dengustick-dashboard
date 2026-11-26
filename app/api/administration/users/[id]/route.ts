@@ -22,7 +22,7 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
-    const { session, error } = await authorizeAdmin();
+    const { session, error } = await authorizeAdmin(request);
 
     if (error) return error;
 
@@ -35,7 +35,9 @@ export async function PATCH(
       );
     }
 
-    if (id === session.user.id) {
+    const userId = new ObjectId(id).toHexString();
+
+    if (userId === session.user.id) {
       return Response.json(
         { message: "You cannot modify your own account here" },
         { status: 403 }
@@ -53,7 +55,7 @@ export async function PATCH(
       );
     }
 
-    if (target.role === "admin") {
+    if (target.role?.split(",").includes("admin")) {
       return Response.json(
         { message: "Administrator accounts are protected" },
         { status: 403 }
@@ -82,8 +84,12 @@ export async function PATCH(
       );
     }
 
+    if (!data.regionId) {
+      return Response.json({ message: "Region is required" }, { status: 400 });
+    }
+
     const region = await regionsCollection.findOne({
-      _id: new ObjectId(data.regionId!),
+      _id: new ObjectId(data.regionId),
       isActive: true,
     });
 
@@ -101,7 +107,7 @@ export async function PATCH(
         headers: requestHeaders,
 
         body: {
-          userId: id,
+          userId,
           banReason: "Account deactivated by administrator",
         },
       });
@@ -111,21 +117,13 @@ export async function PATCH(
       headers: requestHeaders,
 
       body: {
-        userId: id,
+        userId,
 
         data: {
           name: data.name,
           regionId: data.regionId,
+          role: data.role,
         },
-      },
-    });
-
-    await auth.api.setRole({
-      headers: requestHeaders,
-
-      body: {
-        userId: id,
-        role: data.role,
       },
     });
 
@@ -133,7 +131,7 @@ export async function PATCH(
       headers: requestHeaders,
 
       body: {
-        userId: id,
+        userId,
       },
     });
 
@@ -142,7 +140,7 @@ export async function PATCH(
         headers: requestHeaders,
 
         body: {
-          userId: id,
+          userId,
         },
       });
     }

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 
 import { authorizeAPI } from "@/lib/api-auth";
 
@@ -7,6 +8,8 @@ import {
 } from "@/lib/collections";
 
 export async function GET() {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
       "operations:manage"
@@ -23,15 +26,12 @@ export async function GET() {
       );
     }
 
-    const filter = {
-      role: "field_worker",
-      ...(user.role !== "admin"
-        ? { regionId: user.regionId }
-        : {}),
-    };
-
     const workers = await usersCollection
-      .find(filter)
+      .find({
+        role: "field_worker",
+        banned: { $ne: true },
+        ...(user.role !== "admin" ? { regionId: user.regionId } : {}),
+      })
       .project({
         name: 1,
         email: 1,

@@ -11,6 +11,7 @@ const roleSchema = z.enum([
 const regionIdSchema = z
   .string()
   .regex(/^[a-fA-F0-9]{24}$/)
+  .toLowerCase()
   .nullable();
 
 export const createUserSchema = z

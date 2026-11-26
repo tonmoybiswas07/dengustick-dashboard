@@ -66,11 +66,6 @@ export default function FieldOperationsManager({
     "operations:manage"
   );
 
-  const canUpdate = hasPermission(
-    role,
-    "operations:update"
-  );
-
   const [tasks, setTasks] = useState<FieldTaskDTO[]>([]);
   const [workers, setWorkers] = useState<FieldWorker[]>([]);
 
@@ -324,7 +319,7 @@ export default function FieldOperationsManager({
                 <Select
                   value={status}
                   onValueChange={(value) => {
-                    setStatus(value);
+                    setStatus(value ?? "all");
                     setPage(1);
                   }}
                 >
@@ -352,7 +347,7 @@ export default function FieldOperationsManager({
               <TaskTable
                 tasks={tasks}
                 canManage={canManage}
-                canUpdate={canUpdate}
+                canUpdate={canManage}
                 onUpdate={handleUpdate}
               />
 

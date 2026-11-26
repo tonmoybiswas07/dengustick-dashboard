@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { priorityAlerts } from "@/app/constants/dashboard-data";
 
@@ -22,11 +22,9 @@ export default function PriorityAlerts() {
           <CardDescription>Findings requiring attention</CardDescription>
         </div>
 
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/alerts" aria-label="View all alerts">
-            <ArrowUpRight size={18} />
-          </Link>
-        </Button>
+        <Link href="/alerts" aria-label="View all alerts" className={buttonVariants({ variant: "ghost", size: "icon" })}>
+          <ArrowUpRight size={18} />
+        </Link>
       </CardHeader>
 
       <CardContent className="space-y-3">

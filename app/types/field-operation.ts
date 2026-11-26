@@ -68,4 +68,5 @@ export interface FieldTaskDTO
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  isOverdue: boolean;
 }

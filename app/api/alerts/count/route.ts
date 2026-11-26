@@ -1,8 +1,11 @@
+import { connection } from "next/server";
 import { authorizeAPI } from "@/lib/api-auth";
 import { alertsCollection } from "@/lib/collections";
 import { getAlertFilter } from "@/lib/alert-access";
 
 export async function GET() {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
       "alerts:view"

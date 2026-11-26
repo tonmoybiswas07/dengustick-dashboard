@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -158,12 +159,14 @@ export default function ReviewDialog({
 
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-3">
-            <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl border bg-muted">
+            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border bg-muted">
               {inspection.images.length > 0 ? (
-                <img
+                <Image
                   src={inspection.images[selectedImage]}
                   alt="Inspection evidence"
-                  className="size-full object-contain"
+                  fill
+                  unoptimized
+                  className="object-contain"
                   referrerPolicy="no-referrer"
                 />
               ) : (
@@ -184,16 +187,18 @@ export default function ReviewDialog({
                   type="button"
                   aria-label={`View image ${index + 1}`}
                   onClick={() => setSelectedImage(index)}
-                  className={`size-16 overflow-hidden rounded-lg border-2 ${
+                  className={`relative size-16 overflow-hidden rounded-lg border-2 ${
                     selectedImage === index
                       ? "border-primary"
                       : "border-transparent"
                   }`}
                 >
-                  <img
+                  <Image
                     src={image}
                     alt={`Evidence ${index + 1}`}
-                    className="size-full object-cover"
+                    fill
+                    unoptimized
+                    className="object-cover"
                     referrerPolicy="no-referrer"
                   />
                 </button>
@@ -293,10 +298,10 @@ export default function ReviewDialog({
                 <div className="space-y-2">
                   <Label>Verified Detection Result</Label>
 
-                  <Select
+                  <Select<DetectionResult | "">
                     value={detection}
                     onValueChange={(value) =>
-                      setDetection(value as DetectionResult)
+                      setDetection(value ?? "")
                     }
                   >
                     <SelectTrigger className="w-full">

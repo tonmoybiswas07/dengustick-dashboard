@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { hasPermission } from "@/lib/permissions";
-import type { Inspection } from "@/app/types/inspection";
+import type { InspectionDTO } from "@/app/types/inspection";
 
 import {
   Table,
@@ -34,13 +34,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface InspectionTableProps {
-  inspections: Inspection[];
+  inspections: InspectionDTO[];
   role: string;
   page: number;
   totalPages: number;
   total: number;
   onPageChange: (page: number) => void;
-  onEdit: (inspection: Inspection) => void;
+  onEdit: (inspection: InspectionDTO) => void;
   onDelete: (id: string) => void;
 }
 
@@ -76,7 +76,7 @@ export default function InspectionTable({
               <TableHead>Inspection ID</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Inspector</TableHead>
-              <TableHead>Detection</TableHead>
+              <TableHead>AI Prediction</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">
@@ -146,24 +146,22 @@ export default function InspectionTable({
 
                   <TableCell className="text-right">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Inspection actions"
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Inspection actions"
+                          />
+                        }
+                      >
+                        <MoreHorizontal className="size-4" />
                       </DropdownMenuTrigger>
 
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={`/inspections/${inspection._id}`}
-                          >
-                            <Eye className="size-4" />
-                            View Details
-                          </Link>
+                        <DropdownMenuItem nativeButton={false} render={<Link href={`/inspections/${inspection._id}`} />}>
+                          <Eye className="size-4" />
+                          View Details
                         </DropdownMenuItem>
 
                         {hasPermission(

@@ -44,7 +44,7 @@ export default function InspectionFilters({
         />
       </div>
 
-      <Select value={status} onValueChange={onStatusChange}>
+      <Select value={status} onValueChange={(value) => { if (value !== null) onStatusChange(value); }}>
         <SelectTrigger
           aria-label="Filter by status"
           className="h-10 w-full sm:w-45"

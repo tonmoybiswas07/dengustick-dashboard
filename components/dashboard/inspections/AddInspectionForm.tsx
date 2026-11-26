@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 
 import { breedingSiteTypes } from "@/app/constants/inspection";
-import type { Inspection } from "@/app/types/inspection";
+import type { InspectionDTO } from "@/app/types/inspection";
 
 interface AddInspectionFormProps {
   open: boolean;
@@ -36,7 +36,7 @@ interface AddInspectionFormProps {
   onSuccess: () => void;
   role: string;
   regionId: string;
-  inspection?: Inspection | null;
+  inspection?: InspectionDTO | null;
 }
 
 function localDateTime(date: Date) {
@@ -211,7 +211,7 @@ export default function AddInspectionForm({
               <Select
                 value={form.breedingSiteType}
                 onValueChange={(value) =>
-                  updateField("breedingSiteType", value)
+                  updateField("breedingSiteType", value ?? "")
                 }
               >
                 <SelectTrigger className="w-full">

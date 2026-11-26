@@ -1,11 +1,15 @@
+import { connection } from "next/server";
+import { ObjectId } from "mongodb";
 import { randomUUID } from "node:crypto";
 import { authorizeAPI } from "@/lib/api-auth";
-import { inspectionsCollection } from "@/lib/collections";
+import { inspectionsCollection, regionsCollection } from "@/lib/collections";
 import { inspectionSchema } from "@/lib/validations/inspection";
 import type { Inspection } from "@/app/types/inspection";
 import type { Filter } from "mongodb";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI("inspections:view");
 
@@ -14,10 +18,10 @@ export async function GET(request: Request) {
     const user = session.user;
     const { searchParams } = new URL(request.url);
 
-    const page = Math.max(
-      1,
-      parseInt(searchParams.get("page") || "1", 10) || 1
-    );
+    const rawPage = Number(searchParams.get("page") ?? 1);
+    const page = Number.isSafeInteger(rawPage)
+      ? Math.max(1, Math.min(rawPage, 100000))
+      : 1;
 
     const limit = Math.min(
       100,
@@ -93,7 +97,7 @@ export async function GET(request: Request) {
     const [inspections, total] = await Promise.all([
       inspectionsCollection
         .find(filter)
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1, _id: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .toArray(),
@@ -103,7 +107,10 @@ export async function GET(request: Request) {
 
     return Response.json({
       success: true,
-      data: inspections,
+      data: inspections.map((inspection) => ({
+        ...inspection,
+        _id: inspection._id.toHexString(),
+      })),
       pagination: {
         page,
         limit,
@@ -123,7 +130,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { session, error } = await authorizeAPI("inspections:create");
+    const { session, error } = await authorizeAPI("inspections:create", request);
 
     if (error) return error;
 
@@ -142,14 +149,31 @@ export async function POST(request: Request) {
 
     const user = session.user;
     const data = validation.data;
+    if (!ObjectId.isValid(data.regionId)) {
+      return Response.json({ message: "Invalid region ID" }, { status: 400 });
+    }
+
+    const regionId = new ObjectId(data.regionId).toHexString();
 
     if (
       user.role !== "admin" &&
-      (!user.regionId || user.regionId !== data.regionId)
+      (!user.regionId || user.regionId !== regionId)
     ) {
       return Response.json(
         { message: "Region access denied" },
         { status: 403 }
+      );
+    }
+
+    const region = await regionsCollection.findOne(
+      { _id: new ObjectId(regionId), isActive: true },
+      { projection: { _id: 1 } }
+    );
+
+    if (!region) {
+      return Response.json(
+        { message: "Select a valid active region" },
+        { status: 400 }
       );
     }
 
@@ -159,7 +183,7 @@ export async function POST(request: Request) {
       inspectionId: `DV-${randomUUID()}`,
       inspectorId: user.id,
       inspectorName: user.name,
-      regionId: data.regionId,
+      regionId,
       location: data.location,
       breedingSiteType: data.breedingSiteType,
       images: data.images,

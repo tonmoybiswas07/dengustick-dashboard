@@ -145,14 +145,16 @@ export default function ReportTable({
 
                   <TableCell className="text-right">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Report actions"
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Report actions"
+                          />
+                        }
+                      >
+                        <MoreHorizontal className="size-4" />
                       </DropdownMenuTrigger>
 
                       <DropdownMenuContent align="end">

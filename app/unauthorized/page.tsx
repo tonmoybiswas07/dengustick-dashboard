@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function UnauthorizedPage() {
   return (
@@ -26,12 +26,10 @@ export default function UnauthorizedPage() {
           </p>
         </div>
 
-        <Button asChild>
-          <Link href="/dashboard">
-            <ArrowLeft className="mr-2 size-4" />
-            Back to Dashboard
-          </Link>
-        </Button>
+        <Link href="/dashboard" className={buttonVariants()}>
+          <ArrowLeft className="mr-2 size-4" />
+          Back to Dashboard
+        </Link>
       </div>
     </div>
   );

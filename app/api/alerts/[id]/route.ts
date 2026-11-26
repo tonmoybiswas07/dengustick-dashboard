@@ -30,7 +30,7 @@ export async function PATCH(
 ) {
   try {
     const { session, error } = await authorizeAPI(
-      "alerts:view"
+      "alerts:view", request
     );
 
     if (error) return error;

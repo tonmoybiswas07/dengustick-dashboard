@@ -104,7 +104,7 @@ export default function MapView({
 
                 <div className="space-y-1 text-sm">
                   <div>
-                    <strong>Detection:</strong>{" "}
+                    <strong>AI prediction:</strong>{" "}
                     <span className="capitalize">
                       {inspection.detectionResult}
                     </span>
@@ -118,7 +118,7 @@ export default function MapView({
                   </div>
 
                   <div>
-                    <strong>Larvae Count:</strong>{" "}
+                    <strong>Predicted larvae count:</strong>{" "}
                     {inspection.larvaeCount ?? "Not available"}
                   </div>
 
@@ -150,7 +150,7 @@ export default function MapView({
       </MapContainer>
 
       <div className="absolute bottom-8 left-3 z-[500] space-y-3 rounded-xl border bg-card p-4 shadow-lg">
-        <h3 className="text-sm font-semibold">Map Legend</h3>
+        <h3 className="text-sm font-semibold">AI Prediction Legend</h3>
 
         {Object.entries(markerColors).map(([label, color]) => (
           <div key={label} className="flex items-center gap-2">

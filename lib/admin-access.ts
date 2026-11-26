@@ -2,9 +2,10 @@ import "server-only";
 
 import { authorizeAPI } from "@/lib/api-auth";
 
-export async function authorizeAdmin() {
+export async function authorizeAdmin(request?: Request) {
   const { session, error } = await authorizeAPI(
-    "users:manage"
+    "users:manage",
+    request
   );
 
   if (error) {

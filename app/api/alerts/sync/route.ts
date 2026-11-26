@@ -1,17 +1,19 @@
 import { authorizeAPI } from "@/lib/api-auth";
 import { syncAlerts } from "@/lib/alert-service";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const { session, error } = await authorizeAPI(
-      "alerts:manage"
+      "alerts:manage", request
     );
 
     if (error) return error;
 
     const user = session.user;
 
-    if (user.role !== "admin" && !user.regionId) {
+    const regionId = user.regionId ?? undefined;
+
+    if (user.role !== "admin" && !regionId) {
       return Response.json(
         { message: "Region access denied" },
         { status: 403 }
@@ -21,7 +23,7 @@ export async function POST() {
     const result = await syncAlerts(
       user.role === "admin"
         ? undefined
-        : user.regionId
+        : regionId
     );
 
     return Response.json({

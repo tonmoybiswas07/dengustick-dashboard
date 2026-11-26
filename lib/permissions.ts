@@ -71,13 +71,10 @@ export function hasPermission(
   role: string | null | undefined,
   permission: Permission
 ): boolean {
-  if (!role) return false;
-
-  return (
-    rolePermissions[role as UserRole]?.includes(permission) ?? false
-  );
+  return role ? getPermissions(role).includes(permission) : false;
 }
 
 export function getPermissions(role: string): Permission[] {
-  return rolePermissions[role as UserRole] ?? [];
+  if (!Object.prototype.hasOwnProperty.call(rolePermissions, role)) return [];
+  return rolePermissions[role as UserRole];
 }

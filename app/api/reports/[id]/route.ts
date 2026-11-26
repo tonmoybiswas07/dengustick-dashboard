@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { ObjectId } from "mongodb";
 import type { Filter } from "mongodb";
 
@@ -20,6 +21,8 @@ export async function GET(
   request: Request,
   { params }: RouteContext
 ) {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
       "reports:view"

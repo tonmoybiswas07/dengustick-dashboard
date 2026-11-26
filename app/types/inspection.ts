@@ -48,3 +48,12 @@ export interface Inspection {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface InspectionDTO
+  extends Omit<Inspection, "_id" | "createdAt" | "updatedAt" | "inspectedAt" | "review"> {
+  _id: string;
+  createdAt: string;
+  updatedAt: string;
+  inspectedAt: string;
+  review?: Omit<InspectionReview, "reviewedAt"> & { reviewedAt: string };
+}

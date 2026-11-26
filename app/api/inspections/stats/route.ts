@@ -1,9 +1,12 @@
+import { connection } from "next/server";
 import { authorizeAPI } from "@/lib/api-auth";
 import { inspectionsCollection } from "@/lib/collections";
 import type { Filter } from "mongodb";
 import type { Inspection } from "@/app/types/inspection";
 
 export async function GET() {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
       "inspections:view"

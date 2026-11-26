@@ -1,8 +1,12 @@
+import { connection } from "next/server";
+import { MongoServerError } from "mongodb";
 import { authorizeAdmin } from "@/lib/admin-access";
 import { regionsCollection } from "@/lib/collections";
 import { regionSchema } from "@/lib/validations/administration";
 
 export async function GET() {
+  await connection();
+
   try {
     const { error } = await authorizeAdmin();
 
@@ -15,7 +19,7 @@ export async function GET() {
 
     return Response.json({
       success: true,
-      data: regions,
+      data: regions.map((region) => ({ ...region, _id: region._id.toHexString() })),
     });
   } catch (error) {
     console.error(error);
@@ -29,7 +33,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { error } = await authorizeAdmin();
+    const { error } = await authorizeAdmin(request);
 
     if (error) return error;
 
@@ -78,6 +82,17 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (
+      error instanceof MongoServerError &&
+      error.code === 11000 &&
+      error.keyPattern?.code === 1
+    ) {
+      return Response.json(
+        { message: "Region code already exists" },
+        { status: 409 }
+      );
+    }
+
     console.error(error);
 
     return Response.json(

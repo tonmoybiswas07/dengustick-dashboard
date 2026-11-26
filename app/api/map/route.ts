@@ -1,8 +1,11 @@
+import { connection } from "next/server";
 import { authorizeAPI } from "@/lib/api-auth";
 import { inspectionsCollection } from "@/lib/collections";
 import { getInspectionFilter } from "@/lib/inspection-access";
 
 export async function GET() {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI("map:view");
 
@@ -44,7 +47,7 @@ export async function GET() {
           confidenceScore: 1,
           inspectedAt: 1,
         })
-        .sort({ inspectedAt: -1 })
+        .sort({ inspectedAt: -1, _id: -1 })
         .limit(5000)
         .toArray(),
       inspectionsCollection.countDocuments(query),

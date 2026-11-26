@@ -1,18 +1,20 @@
+import { connection } from "next/server";
 import { ObjectId } from "mongodb";
 import { authorizeAPI } from "@/lib/api-auth";
-import { inspectionsCollection } from "@/lib/collections";
+import { inspectionsCollection, regionsCollection } from "@/lib/collections";
 import { inspectionSchema } from "@/lib/validations/inspection";
 import { getInspectionFilter } from "@/lib/inspection-access";
-
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: RouteContext
 ) {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
       "inspections:view"
@@ -52,7 +54,7 @@ export async function GET(
 
     return Response.json({
       success: true,
-      data: inspection,
+      data: { ...inspection, _id: inspection._id.toHexString() },
     });
   } catch (error) {
     console.error(error);
@@ -70,7 +72,7 @@ export async function PATCH(
 ) {
   try {
     const { session, error } = await authorizeAPI(
-      "inspections:update"
+      "inspections:update", request
     );
 
     if (error) return error;
@@ -107,10 +109,13 @@ export async function PATCH(
     }
 
     const data = validation.data;
+    const regionId = ObjectId.isValid(data.regionId)
+      ? new ObjectId(data.regionId).toHexString()
+      : data.regionId;
 
     if (
       session.user.role !== "admin" &&
-      data.regionId !== session.user.regionId
+      regionId !== session.user.regionId
     ) {
       return Response.json(
         { message: "Region access denied" },
@@ -118,15 +123,40 @@ export async function PATCH(
       );
     }
 
+    const existing = await inspectionsCollection.findOne(
+      { ...filter, _id: new ObjectId(id), status: "pending" },
+      { projection: { regionId: 1 } }
+    );
+
+    if (existing && existing.regionId !== regionId) {
+      if (!ObjectId.isValid(regionId)) {
+        return Response.json({ message: "Invalid region ID" }, { status: 400 });
+      }
+
+      const region = await regionsCollection.findOne(
+        { _id: new ObjectId(regionId), isActive: true },
+        { projection: { _id: 1 } }
+      );
+
+      if (!region) {
+        return Response.json(
+          { message: "Select a valid active region" },
+          { status: 400 }
+        );
+      }
+    }
+
     const result = await inspectionsCollection.updateOne(
       {
         ...filter,
         _id: new ObjectId(id),
         status: "pending",
+        regionId: existing?.regionId ?? regionId,
       },
       {
         $set: {
           ...data,
+          regionId,
           inspectedAt: new Date(data.inspectedAt),
           updatedAt: new Date(),
         },
@@ -163,7 +193,7 @@ export async function DELETE(
 ) {
   try {
     const { session, error } = await authorizeAPI(
-      "inspections:delete"
+      "inspections:delete", request
     );
 
     if (error) return error;

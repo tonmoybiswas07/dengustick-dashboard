@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
-import type { Filter } from "mongodb";
+import { MongoServerError, type Filter } from "mongodb";
 
 import {
   alertsCollection,
@@ -27,7 +27,7 @@ type AlertInput = Omit<
   "updatedAt"
 >;
 
-export async function createAlert(data: AlertInput) {
+async function createAlert(data: AlertInput) {
   const now = new Date();
 
   const alert: Omit<Alert, "_id"> = {
@@ -43,20 +43,32 @@ export async function createAlert(data: AlertInput) {
     updatedAt: now,
   };
 
-  const result = await alertsCollection.updateOne(
-    {
-      type: data.type,
-      sourceId: data.sourceId,
-    },
-    {
-      $setOnInsert: alert,
-    },
-    {
-      upsert: true,
-    }
-  );
+  try {
+    const result = await alertsCollection.updateOne(
+      {
+        type: data.type,
+        sourceId: data.sourceId,
+      },
+      {
+        $setOnInsert: alert,
+      },
+      {
+        upsert: true,
+      }
+    );
 
-  return result.upsertedCount;
+    return result.upsertedCount;
+  } catch (error) {
+    if (
+      error instanceof MongoServerError &&
+      error.code === 11000 &&
+      error.keyPattern?.type === 1 &&
+      error.keyPattern?.sourceId === 1
+    ) {
+      return 0;
+    }
+    throw error;
+  }
 }
 
 export async function syncAlerts(regionId?: string) {

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { randomUUID } from "crypto";
 import type { Filter } from "mongodb";
 
@@ -16,6 +17,8 @@ import { generateReportSnapshot } from "@/lib/report-service";
 import type { Report } from "@/app/types/report";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
       "reports:view"
@@ -26,6 +29,7 @@ export async function GET(request: Request) {
     const user = session.user;
 
     const filter: Filter<Omit<Report, "_id">> = {};
+    let regionFilter: { regionId?: string } = {};
 
     if (user.role !== "admin") {
       if (!user.regionId) {
@@ -35,6 +39,7 @@ export async function GET(request: Request) {
         );
       }
 
+      regionFilter = { regionId: user.regionId };
       filter.regionId = user.regionId;
     }
 
@@ -72,11 +77,6 @@ export async function GET(request: Request) {
         1
       ) - 6 * 3600000
     );
-
-    const regionFilter =
-      user.role === "admin"
-        ? {}
-        : { regionId: user.regionId };
 
     const [
       reports,
@@ -165,14 +165,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { session, error } = await authorizeAPI(
-      "reports:create"
+      "reports:create", request
     );
 
     if (error) return error;
 
     const user = session.user;
 
-    if (user.role !== "admin" && !user.regionId) {
+    const regionId = user.role === "admin" ? null : user.regionId ?? null;
+
+    if (user.role !== "admin" && !regionId) {
       return Response.json(
         { message: "Region access denied" },
         { status: 403 }
@@ -209,11 +211,6 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
-
-    const regionId =
-      user.role === "admin"
-        ? null
-        : user.regionId!;
 
     const snapshot = await generateReportSnapshot(
       data,

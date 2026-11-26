@@ -180,7 +180,7 @@ export default function RegionDialog({
               onValueChange={(value) =>
                 setForm({
                   ...form,
-                  division: value,
+                  division: value ?? "",
                 })
               }
             >

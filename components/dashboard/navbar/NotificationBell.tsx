@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function NotificationBell() {
   const [count, setCount] = useState(0);
@@ -69,24 +69,14 @@ export default function NotificationBell() {
   }, []);
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="relative"
-      asChild
-    >
-      <Link
-        href="/alerts"
-        aria-label={`${count} unread alerts`}
-      >
-        <Bell className="size-5" />
+    <Link href="/alerts" aria-label={`${count} unread alerts`} className={buttonVariants({ variant: "ghost", size: "icon", className: "relative" })}>
+      <Bell className="size-5" />
 
-        {count > 0 && (
-          <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-5 text-white">
-            {count > 99 ? "99+" : count}
-          </span>
-        )}
-      </Link>
-    </Button>
+      {count > 0 && (
+        <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-5 text-white">
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </Link>
   );
 }

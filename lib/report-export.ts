@@ -19,7 +19,7 @@ function escapeCSV(value: string | number) {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
-export function generateCSV(report: Report) {
+export function generateCSV(report: Omit<Report, "_id">) {
   const rows: (string | number)[][] = [
     ["DengueVision Surveillance Report"],
     ["Report ID", report.reportId],
@@ -58,7 +58,7 @@ export function generateCSV(report: Report) {
   );
 }
 
-export function generatePDF(report: Report) {
+export function generatePDF(report: Omit<Report, "_id">) {
   const doc = new jsPDF({
     orientation: "landscape",
     unit: "mm",

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ObjectId } from "mongodb";
@@ -17,7 +18,7 @@ import { getInspectionFilter } from "@/lib/inspection-access";
 import { inspectionsCollection } from "@/lib/collections";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface PageProps {
@@ -77,12 +78,10 @@ export default async function InspectionDetailsPage({
 
   return (
     <div className="space-y-6">
-      <Button variant="outline" asChild>
-        <Link href="/inspections">
-          <ArrowLeft className="size-4" />
-          Back to Inspections
-        </Link>
-      </Button>
+      <Link href="/inspections" className={buttonVariants({ variant: "outline" })}>
+        <ArrowLeft className="size-4" />
+        Back to Inspections
+      </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -247,12 +246,14 @@ export default async function InspectionDetailsPage({
               {inspection.images.map((image, index) => (
                 <div
                   key={`${image}-${index}`}
-                  className="overflow-hidden rounded-xl border"
+                  className="relative aspect-video overflow-hidden rounded-xl border"
                 >
-                  <img
+                  <Image
                     src={image}
                     alt={`Inspection image ${index + 1}`}
-                    className="aspect-video w-full object-cover"
+                    fill
+                    unoptimized
+                    className="object-cover"
                     loading="lazy"
                     referrerPolicy="no-referrer"
                   />

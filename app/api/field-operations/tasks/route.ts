@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
 import type { Filter } from "mongodb";
@@ -7,6 +8,7 @@ import { authorizeAPI } from "@/lib/api-auth";
 import {
   fieldTasksCollection,
   usersCollection,
+  regionsCollection,
 } from "@/lib/collections";
 
 import { createTaskSchema } from "@/lib/validations/field-operation";
@@ -14,9 +16,11 @@ import { createTaskSchema } from "@/lib/validations/field-operation";
 import type { FieldTask } from "@/app/types/field-operation";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
     const { session, error } = await authorizeAPI(
-      "operations:view"
+      "operations:manage"
     );
 
     if (error) return error;
@@ -65,6 +69,8 @@ export async function GET(request: Request) {
       query.status = status;
     }
 
+    const now = new Date();
+
     const [
       tasks,
       filteredTotal,
@@ -105,13 +111,19 @@ export async function GET(request: Request) {
         status: {
           $in: ["assigned", "in_progress"],
         },
-        deadline: { $lt: new Date() },
+        deadline: { $lt: now },
       }),
     ]);
 
     return Response.json({
       success: true,
-      data: tasks,
+      data: tasks.map((task) => ({
+        ...task,
+        _id: task._id.toHexString(),
+        isOverdue:
+          task.deadline < now &&
+          (task.status === "assigned" || task.status === "in_progress"),
+      })),
       stats: {
         total,
         assigned,
@@ -139,7 +151,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { session, error } = await authorizeAPI(
-      "operations:manage"
+      "operations:manage", request
     );
 
     if (error) return error;
@@ -168,28 +180,39 @@ export async function POST(request: Request) {
       );
     }
 
+    const user = session.user;
+    const isAdmin = user.role === "admin";
+
+    if (!isAdmin && !user.regionId) {
+      return Response.json(
+        { message: "Region access denied" },
+        { status: 403 }
+      );
+    }
+
     const worker = await usersCollection.findOne({
       _id: new ObjectId(data.assignedTo),
       role: "field_worker",
+      banned: { $ne: true },
+      ...(isAdmin ? {} : { regionId: user.regionId }),
     });
 
-    if (!worker || !worker.regionId) {
+    if (!worker?.regionId || !ObjectId.isValid(worker.regionId)) {
       return Response.json(
         { message: "Field worker or assigned region not found" },
         { status: 404 }
       );
     }
 
-    if (
-      session.user.role !== "admin" &&
-      (
-        !session.user.regionId ||
-        worker.regionId !== session.user.regionId
-      )
-    ) {
+    const region = await regionsCollection.findOne(
+      { _id: new ObjectId(worker.regionId), isActive: true },
+      { projection: { _id: 1 } }
+    );
+
+    if (!region) {
       return Response.json(
-        { message: "Region access denied" },
-        { status: 403 }
+        { message: "The worker must belong to an active region" },
+        { status: 409 }
       );
     }
 
@@ -225,6 +248,7 @@ export async function POST(request: Request) {
         message: "Task assigned successfully",
         data: {
           ...task,
+          isOverdue: false,
           _id: result.insertedId.toString(),
         },
       },

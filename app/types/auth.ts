@@ -21,7 +21,5 @@ export type Permission =
     | "models:evaluate"
     | "users:manage"
     | "settings:manage"
-    | "operations:view"
-    | "operations:update"
     | "alerts:manage"
     | "reports:create";

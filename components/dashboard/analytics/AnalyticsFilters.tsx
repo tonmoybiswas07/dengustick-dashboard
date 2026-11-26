@@ -37,7 +37,7 @@ export default function AnalyticsFilters({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <Select
         value={range}
-        onValueChange={onRangeChange}
+        onValueChange={(value) => { if (value !== null) onRangeChange(value); }}
       >
         <SelectTrigger className="w-full sm:w-48">
           <CalendarDays className="size-4 text-muted-foreground" />
@@ -69,7 +69,7 @@ export default function AnalyticsFilters({
 
       <Select
         value={district}
-        onValueChange={onDistrictChange}
+        onValueChange={(value) => { if (value !== null) onDistrictChange(value); }}
       >
         <SelectTrigger className="w-full sm:w-48">
           <MapPin className="size-4 text-muted-foreground" />

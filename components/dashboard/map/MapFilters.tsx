@@ -46,7 +46,7 @@ export default function MapFilters({
         />
       </div>
 
-      <Select value={district} onValueChange={onDistrictChange}>
+      <Select value={district} onValueChange={(value) => { if (value !== null) onDistrictChange(value); }}>
         <SelectTrigger className="h-10 w-full lg:w-48">
           <SelectValue placeholder="All Districts" />
         </SelectTrigger>
@@ -62,13 +62,13 @@ export default function MapFilters({
         </SelectContent>
       </Select>
 
-      <Select value={detection} onValueChange={onDetectionChange}>
+      <Select value={detection} onValueChange={(value) => { if (value !== null) onDetectionChange(value); }}>
         <SelectTrigger className="h-10 w-full lg:w-48">
-          <SelectValue placeholder="All Detections" />
+          <SelectValue placeholder="All AI Predictions" />
         </SelectTrigger>
 
         <SelectContent>
-          <SelectItem value="all">All Detections</SelectItem>
+          <SelectItem value="all">All AI Predictions</SelectItem>
           <SelectItem value="positive">Positive</SelectItem>
           <SelectItem value="negative">Negative</SelectItem>
           <SelectItem value="inconclusive">Inconclusive</SelectItem>

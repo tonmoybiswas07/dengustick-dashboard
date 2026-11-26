@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   MapPin,
   CalendarDays,
@@ -37,10 +38,12 @@ export default function ReviewCard({
     <Card className="gap-0 overflow-hidden py-0">
       <div className="relative aspect-video overflow-hidden bg-muted">
         {inspection.images.length > 0 ? (
-          <img
+          <Image
             src={inspection.images[0]}
             alt="Inspection evidence"
-            className="size-full object-cover"
+            fill
+            unoptimized
+            className="object-cover"
             loading="lazy"
             referrerPolicy="no-referrer"
           />

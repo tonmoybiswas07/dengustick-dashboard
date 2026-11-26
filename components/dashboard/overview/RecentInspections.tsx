@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { recentInspections } from "@/app/constants/dashboard-data";
 
@@ -39,12 +39,10 @@ export default function RecentInspections() {
           </CardDescription>
         </div>
 
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/inspections">
-            View All
-            <ArrowUpRight size={15} />
-          </Link>
-        </Button>
+        <Link href="/inspections" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          View All
+          <ArrowUpRight size={15} />
+        </Link>
       </CardHeader>
 
       <CardContent>

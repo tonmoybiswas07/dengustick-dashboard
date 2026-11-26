@@ -55,10 +55,6 @@ const permissions: {
     value: "ai:review",
   },
   {
-    label: "View Field Operations",
-    value: "operations:view",
-  },
-  {
     label: "Manage Field Operations",
     value: "operations:manage",
   },
@@ -87,16 +83,8 @@ const permissions: {
     value: "reports:export",
   },
   {
-    label: "Model Evaluation",
-    value: "models:evaluate",
-  },
-  {
     label: "User Management",
     value: "users:manage",
-  },
-  {
-    label: "System Settings",
-    value: "settings:manage",
   },
 ];
 

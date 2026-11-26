@@ -1,16 +1,18 @@
 import "server-only";
 
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
 import type { Permission } from "@/app/types/auth";
 
-export async function getSession() {
+export const getSession = cache(async () => {
   return auth.api.getSession({
     headers: await headers(),
+    query: { disableCookieCache: true },
   });
-}
+});
 
 export async function requireAuth() {
   const session = await getSession();

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { authorizeAdmin } from "@/lib/admin-access";
 
 import {
@@ -6,6 +7,8 @@ import {
 } from "@/lib/collections";
 
 export async function GET() {
+  await connection();
+
   try {
     const { error } = await authorizeAdmin();
 
