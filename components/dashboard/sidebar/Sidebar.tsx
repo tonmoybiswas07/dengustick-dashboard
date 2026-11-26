@@ -5,14 +5,25 @@ import { usePathname } from "next/navigation";
 import { ScanEye, ChevronRight, University } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { hasPermission } from "@/lib/permissions";
 import { navigation } from "@/app/constants/navigation";
 
 interface SidebarProps {
+  role: string;
   onNavigate?: () => void;
 }
 
-export default function Sidebar({ onNavigate }: SidebarProps) {
+export default function Sidebar({ role, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+
+  const allowedNavigation = navigation
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        hasPermission(role, item.permission)
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside className="flex h-dvh w-64 flex-col bg-sidebar text-sidebar-foreground">
@@ -32,7 +43,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-6">
-        {navigation.map((group) => (
+        {allowedNavigation.map((group) => (
           <div key={group.label}>
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
               {group.label}

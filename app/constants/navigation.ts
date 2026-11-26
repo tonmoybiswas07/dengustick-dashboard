@@ -1,41 +1,63 @@
 import {
   LayoutDashboard,
   ClipboardList,
-  MapPinned,
+  Map,
   ScanEye,
   UsersRound,
   BellRing,
   ChartNoAxesCombined,
-  FileChartColumn,
+  FileText,
   BrainCircuit,
-  ShieldCheck,
   Settings,
-  ScrollText,
 } from "lucide-react";
 
-export const navigation = [
+import type { LucideIcon } from "lucide-react";
+import type { Permission } from "@/app/types/auth";
+
+interface NavigationItem {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  permission: Permission;
+}
+
+interface NavigationGroup {
+  label: string;
+  items: NavigationItem[];
+}
+
+export const navigation: NavigationGroup[] = [
+  {
+    label: "Overview",
+    items: [
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+        permission: "dashboard:view",
+      },
+    ],
+  },
   {
     label: "Surveillance",
     items: [
       {
-        title: "Overview",
-        href: "/dashboard",
-        icon: LayoutDashboard,
-      },
-      {
         title: "Inspections",
         href: "/inspections",
         icon: ClipboardList,
+        permission: "inspections:view",
       },
       {
         title: "Geospatial Map",
         href: "/map",
-        icon: MapPinned,
+        icon: Map,
+        permission: "map:view",
       },
       {
         title: "AI Review",
         href: "/ai-review",
         icon: ScanEye,
+        permission: "ai:review",
       },
     ],
   },
@@ -46,51 +68,47 @@ export const navigation = [
         title: "Field Operations",
         href: "/field-operations",
         icon: UsersRound,
+        permission: "operations:manage",
       },
       {
         title: "Alerts",
         href: "/alerts",
         icon: BellRing,
+        permission: "alerts:view",
       },
     ],
   },
   {
-    label: "Research & Analytics",
+    label: "Intelligence",
     items: [
       {
         title: "Analytics",
         href: "/analytics",
         icon: ChartNoAxesCombined,
+        permission: "analytics:view",
       },
       {
         title: "Reports",
         href: "/reports",
-        icon: FileChartColumn,
+        icon: FileText,
+        permission: "reports:view",
       },
       {
         title: "Model Evaluation",
         href: "/model-evaluation",
         icon: BrainCircuit,
+        permission: "models:evaluate",
       },
     ],
   },
   {
-    label: "Administration",
+    label: "System",
     items: [
       {
-        title: "User Management",
-        href: "/users",
-        icon: ShieldCheck,
-      },
-      {
-        title: "Audit Logs",
-        href: "/audit-logs",
-        icon: ScrollText,
-      },
-      {
-        title: "Settings",
-        href: "/settings",
+        title: "Administration",
+        href: "/administration",
         icon: Settings,
+        permission: "users:manage",
       },
     ],
   },
