@@ -19,6 +19,10 @@ export async function requireAuth() {
     redirect("/login");
   }
 
+  if (session.user.banned) {
+    redirect("/unauthorized");
+  }
+
   return session;
 }
 

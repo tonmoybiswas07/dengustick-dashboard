@@ -20,6 +20,16 @@ export async function authorizeAPI(permission: Permission) {
     } as const;
   }
 
+  if (session.user.banned) {
+    return {
+      session: null,
+      error: Response.json(
+        { message: "Account deactivated" },
+        { status: 403 }
+      ),
+    } as const;
+  }
+
   if (!hasPermission(session.user.role, permission)) {
     return {
       session: null,

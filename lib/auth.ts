@@ -2,6 +2,8 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
 import client, { db } from "@/lib/db";
+import { admin } from "better-auth/plugins";
+import { ac, authRoles } from "@/lib/auth-access";
 
 export const auth = betterAuth({
   database: mongodbAdapter(db, {
@@ -14,26 +16,27 @@ export const auth = betterAuth({
 
   emailAndPassword: {
   enabled: true,
-  disableSignUp: false,
+  disableSignUp: true,
   minPasswordLength: 8,
 },
 
   user: {
-    additionalFields: {
-      role: {
-        type: "string",
-        required: false,
-        defaultValue: "field_worker",
-        input: false,
-      },
-
-      regionId: {
-        type: "string",
-        required: false,
-        input: false,
-      },
+  additionalFields: {
+    regionId: {
+      type: "string",
+      required: false,
+      input: false,
     },
   },
+},
 
-  plugins: [nextCookies()],
+  plugins: [
+  admin({
+    ac,
+    roles: authRoles,
+    defaultRole: "field_worker",
+    adminRoles: ["admin"],
+  }),
+  nextCookies(),
+],
 });
