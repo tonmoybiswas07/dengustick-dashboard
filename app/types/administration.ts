@@ -9,11 +9,14 @@ export interface AdminUser {
   image?: string | null;
   emailVerified: boolean;
   banned?: boolean;
+  banReason?: string | null;
+  banExpires?: Date | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Region {
+  lifecycleVersion?: number;
   _id?: string;
   name: string;
   code: string;

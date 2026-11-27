@@ -1,3 +1,4 @@
+import { alertQuery } from "@/lib/validations/query";
 import { connection } from "next/server";
 import type { Filter } from "mongodb";
 
@@ -29,14 +30,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
 
-    const status = searchParams.get("status") ?? "all";
-    const severity = searchParams.get("severity") ?? "all";
-
-    const rawPage = Number(searchParams.get("page") ?? 1);
-
-    const page = Number.isSafeInteger(rawPage)
-      ? Math.max(1, Math.min(rawPage, 100000))
-      : 1;
+    const parsed = alertQuery.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) {
+      return Response.json({ message: "Invalid query parameters" }, { status: 400 });
+    }
+    const { page, status, severity } = parsed.data;
 
     const limit = 10;
 
@@ -127,11 +125,11 @@ export async function GET(request: Request) {
         page,
         limit,
         total: filteredTotal,
-        totalPages: Math.ceil(filteredTotal / limit),
+        totalPages: Math.min(1000, Math.ceil(filteredTotal / limit)),
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/alerts request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch alerts" },

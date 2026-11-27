@@ -1,3 +1,6 @@
+import client from "@/lib/db";
+import { audit } from "@/lib/audit";
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
@@ -54,7 +57,7 @@ export async function PATCH(
       );
     }
 
-    const body = await request.json().catch(() => null);
+    const body = await readJSON(request);
 
     const validation = updateAlertSchema.safeParse(body);
 
@@ -102,40 +105,46 @@ export async function PATCH(
       );
     }
 
-    const result = await alertsCollection.updateOne(
-      {
-        ...query,
-        status: "active",
-      },
-      {
-        $set: {
-          status: "resolved",
-          resolvedBy: user.id,
-          resolvedByName: user.name,
-          resolutionNotes: data.resolutionNotes,
-          resolvedAt: new Date(),
-          updatedAt: new Date(),
+    return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
+      const resolved = await alertsCollection.findOneAndUpdate(
+        {
+          ...query,
+          status: "active",
         },
+        {
+          $set: {
+            status: "resolved",
+            resolvedBy: user.id,
+            resolvedByName: user.name,
+            resolutionNotes: data.resolutionNotes,
+            resolvedAt: new Date(),
+            updatedAt: new Date(),
+          },
 
-        $addToSet: {
-          readBy: user.id,
+          $addToSet: {
+            readBy: user.id,
+          },
         },
-      }
-    );
-
-    if (!result.matchedCount) {
-      return Response.json(
-        { message: "Alert unavailable or already resolved" },
-        { status: 409 }
+        { projection: { regionId: 1 }, session: dbSession },
       );
-    }
 
-    return Response.json({
-      success: true,
-      message: "Alert resolved successfully",
-    });
+      if (!resolved) {
+        return Response.json(
+          { message: "Alert unavailable or already resolved" },
+          { status: 409 }
+        );
+      }
+
+      await audit({ actorId: user.id, action: "alert.resolve", resource: "alert", resourceId: id, regionId: resolved.regionId }, dbSession);
+
+      return Response.json({
+        success: true,
+        message: "Alert resolved successfully",
+      });
+    }));
   } catch (error) {
-    console.error(error);
+    if (error instanceof RequestBodyTooLarge) return error.response();
+    console.error("api/alerts/[id] request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to update alert" },

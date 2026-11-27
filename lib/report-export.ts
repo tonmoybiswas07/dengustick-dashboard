@@ -11,7 +11,7 @@ function escapeCSV(value: string | number) {
 
   if (
     typeof value === "string" &&
-    /^[\s\u0000-\u001f]*[=+\-@]/.test(text)
+    /^(?:[\t\r\n]|[\s\u0000-\u001f]*[=+\-@＝＋－＠])/.test(text)
   ) {
     text = `'${text}`;
   }

@@ -1,3 +1,7 @@
+import client from "@/lib/db";
+import { paginationQuery } from "@/lib/validations/query";
+import { audit } from "@/lib/audit";
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { connection } from "next/server";
 import { randomUUID } from "crypto";
 import type { Filter } from "mongodb";
@@ -21,7 +25,7 @@ export async function GET(request: Request) {
 
   try {
     const { session, error } = await authorizeAPI(
-      "reports:view"
+      "reports:view", request
     );
 
     if (error) return error;
@@ -41,6 +45,7 @@ export async function GET(request: Request) {
 
       regionFilter = { regionId: user.regionId };
       filter.regionId = user.regionId;
+      if (user.role === "researcher") filter.generatedBy = user.id;
     }
 
     const canManageOperations = hasPermission(
@@ -54,13 +59,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
 
-    const rawPage = Number(
-      searchParams.get("page") ?? 1
-    );
-
-    const page = Number.isSafeInteger(rawPage)
-      ? Math.max(1, Math.min(rawPage, 100000))
-      : 1;
+    const parsed = paginationQuery.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) {
+      return Response.json({ message: "Invalid query parameters" }, { status: 400 });
+    }
+    const { page } = parsed.data;
 
     const limit = 10;
 
@@ -149,11 +152,11 @@ export async function GET(request: Request) {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.min(1000, Math.ceil(total / limit)),
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/reports request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch reports" },
@@ -181,7 +184,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json().catch(() => null);
+    const body = await readJSON(request);
 
     const validation =
       generateReportSchema.safeParse(body);
@@ -239,23 +242,28 @@ export async function POST(request: Request) {
       createdAt: new Date(),
     };
 
-    const result =
-      await reportsCollection.insertOne(report);
+    return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
+      const result =
+        await reportsCollection.insertOne(report, { session: dbSession });
 
-    return Response.json(
-      {
-        success: true,
-        message: "Report generated successfully",
+      await audit({ actorId: user.id, action: "report.generate", resource: "report", resourceId: result.insertedId.toHexString(), regionId: regionId }, dbSession);
 
-        data: {
-          ...report,
-          _id: result.insertedId.toString(),
+      return Response.json(
+        {
+          success: true,
+          message: "Report generated successfully",
+
+          data: {
+            ...report,
+            _id: result.insertedId.toString(),
+          },
         },
-      },
-      { status: 201 }
-    );
+        { status: 201 }
+      );
+    }));
   } catch (error) {
-    console.error(error);
+    if (error instanceof RequestBodyTooLarge) return error.response();
+    console.error("api/reports request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to generate report" },

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getRegionalScope } from "@/lib/permissions";
 import type { Filter } from "mongodb";
 import type { Alert } from "@/app/types/alert";
 
@@ -12,22 +13,8 @@ interface AlertUser {
 export function getAlertFilter(
   user: AlertUser
 ): Filter<Omit<Alert, "_id">> | null {
-  if (user.role === "admin") {
-    return {};
-  }
-
-  if (!user.regionId) {
-    return null;
-  }
-
-  if (user.role === "field_worker") {
-    return {
-      regionId: user.regionId,
-      assignedTo: user.id,
-    };
-  }
-
-  return {
-    regionId: user.regionId,
-  };
+  const scope = getRegionalScope(user, "alerts:view");
+  if (!scope) return null;
+  const { ownerId, ...region } = scope;
+  return ownerId ? { ...region, assignedTo: ownerId } : region;
 }

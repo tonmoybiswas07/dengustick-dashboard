@@ -1,14 +1,15 @@
+import { searchQuery } from "@/lib/validations/query";
+import { audit } from "@/lib/audit";
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { connection } from "next/server";
-import { ObjectId } from "mongodb";
-import { headers } from "next/headers";
+import { MongoServerError, ObjectId } from "mongodb";
+import client, { db } from "@/lib/db";
+import { lockRegion } from "@/lib/region-security";
 
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { authorizeAdmin } from "@/lib/admin-access";
 
-import {
-  usersCollection,
-  regionsCollection,
-} from "@/lib/collections";
+import { usersCollection } from "@/lib/collections";
 
 import {
   createUserSchema,
@@ -18,28 +19,22 @@ export async function GET(request: Request) {
   await connection();
 
   try {
-    const { error } = await authorizeAdmin();
+    const { error } = await authorizeAdmin(request);
 
     if (error) return error;
 
     const { searchParams } = new URL(request.url);
 
-    const search = (
-      searchParams.get("search") ?? ""
-    ).trim().slice(0, 100);
+    const parsed = searchQuery.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) {
+      return Response.json({ message: "Invalid query parameters" }, { status: 400 });
+    }
+    const { page, search } = parsed.data;
 
     const escapedSearch = search.replace(
       /[.*+?^${}()|[\]\\]/g,
       "\\$&"
     );
-
-    const rawPage = Number(
-      searchParams.get("page") ?? 1
-    );
-
-    const page = Number.isSafeInteger(rawPage)
-      ? Math.max(1, Math.min(rawPage, 100000))
-      : 1;
 
     const limit = 10;
 
@@ -91,11 +86,11 @@ export async function GET(request: Request) {
       pagination: {
         page,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.min(1000, Math.ceil(total / limit)),
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/administration/users request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch users" },
@@ -106,11 +101,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { error } = await authorizeAdmin(request);
+    const { session, error } = await authorizeAdmin(request);
 
     if (error) return error;
 
-    const body = await request.json().catch(() => null);
+    const body = await readJSON(request);
 
     const validation = createUserSchema.safeParse(body);
 
@@ -125,50 +120,29 @@ export async function POST(request: Request) {
 
     const data = validation.data;
 
-    if (data.role !== "admin" && data.regionId) {
-      const region = await regionsCollection.findOne({
-        _id: new ObjectId(data.regionId),
-        isActive: true,
-      });
-
-      if (!region) {
-        return Response.json(
-          { message: "Select a valid active region" },
-          { status: 400 }
-        );
-      }
-    }
-
     const email = data.email.toLowerCase();
+    const regionId = data.role === "admin" ? null : data.regionId;
+    const id = new ObjectId();
+    const now = new Date();
+    const password = await (await getAuth().$context).password.hash(data.password);
 
-    const existingUser = await usersCollection.findOne({
-      email,
-    });
-
-    if (existingUser) {
-      return Response.json(
-        { message: "Email already exists" },
-        { status: 409 }
-      );
-    }
-
-    await auth.api.createUser({
-      headers: await headers(),
-
-      body: {
-        name: data.name,
-        email,
-        password: data.password,
-        role: data.role,
-
-        data: {
-          regionId:
-            data.role === "admin"
-              ? null
-              : data.regionId,
-        },
-      },
-    });
+    const outcome = await client.withSession((dbSession) => dbSession.withTransaction(async () => {
+      if (regionId && !(await lockRegion(dbSession, regionId))) return "inactive";
+      if (await usersCollection.findOne({ email }, { session: dbSession, projection: { _id: 1 } })) return "duplicate";
+      await usersCollection.insertOne({
+        _id: id, email, name: data.name, role: data.role, regionId,
+        emailVerified: false, banned: false, createdAt: now, updatedAt: now,
+      }, { session: dbSession });
+      // Better Auth's Mongo adapter stores the credential account's foreign key as an ObjectId.
+      await db.collection("account").insertOne({
+        userId: id, accountId: id.toHexString(), providerId: "credential",
+        password, createdAt: now, updatedAt: now,
+      }, { session: dbSession });
+      await audit({ actorId: session.user.id, action: "user.create", resource: "user", resourceId: id.toHexString(), regionId }, dbSession);
+      return "created";
+    }));
+    if (outcome === "inactive") return Response.json({ message: "Select a valid active region" }, { status: 409 });
+    if (outcome === "duplicate") return Response.json({ message: "Email already exists" }, { status: 409 });
 
     return Response.json(
       {
@@ -178,7 +152,11 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error(error);
+    if (error instanceof RequestBodyTooLarge) return error.response();
+    if (error instanceof MongoServerError && error.code === 11000) {
+      return Response.json({ message: "Email already exists" }, { status: 409 });
+    }
+    console.error("api/administration/users request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to create user" },

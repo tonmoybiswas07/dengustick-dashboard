@@ -1,5 +1,7 @@
 "use client";
 
+import { loadDirectory } from "@/lib/directory";
+
 import { useEffect, useState } from "react";
 
 import {
@@ -87,16 +89,13 @@ export default function AdminManager({
           page: String(page),
         });
 
-        const responses = await Promise.all([
+        const [userResponse, regions, statsResponse] = await Promise.all([
           fetch(`/api/administration/users?${params}`, {
             cache: "no-store",
             signal: controller.signal,
           }),
 
-          fetch("/api/administration/regions", {
-            cache: "no-store",
-            signal: controller.signal,
-          }),
+          loadDirectory<RegionDTO>("/api/administration/regions", controller.signal),
 
           fetch("/api/administration/stats", {
             cache: "no-store",
@@ -104,12 +103,8 @@ export default function AdminManager({
           }),
         ]);
 
-        const [userResult, regionResult, statsResult] =
-          await Promise.all(
-            responses.map((response) => response.json())
-          );
-
-        if (responses.some((response) => !response.ok)) {
+        const [userResult, statsResult] = await Promise.all([userResponse.json(), statsResponse.json()]);
+        if (!userResponse.ok || !statsResponse.ok) {
           throw new Error(
             "Failed to load administration data"
           );
@@ -118,7 +113,7 @@ export default function AdminManager({
         if (controller.signal.aborted) return;
 
         setUsers(userResult.data);
-        setRegions(regionResult.data);
+        setRegions(regions);
         setStats(statsResult.data);
 
         const pages = Math.max(

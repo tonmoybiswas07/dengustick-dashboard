@@ -1,3 +1,4 @@
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { authorizeAPI } from "@/lib/api-auth";
 import { syncAlerts } from "@/lib/alert-service";
 
@@ -8,6 +9,7 @@ export async function POST(request: Request) {
     );
 
     if (error) return error;
+    await readJSON(request);
 
     const user = session.user;
 
@@ -28,11 +30,14 @@ export async function POST(request: Request) {
 
     return Response.json({
       success: true,
-      message: `${result.created} new alerts generated`,
+      message: result.hasMore
+        ? `${result.created} new alerts generated. Run sync again to process additional records.`
+        : `${result.created} new alerts generated`,
       data: result,
     });
   } catch (error) {
-    console.error(error);
+    if (error instanceof RequestBodyTooLarge) return error.response();
+    console.error("api/alerts/sync request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to synchronize alerts" },

@@ -4,12 +4,12 @@ import { inspectionsCollection } from "@/lib/collections";
 import type { Filter } from "mongodb";
 import type { Inspection } from "@/app/types/inspection";
 
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
 
   try {
     const { session, error } = await authorizeAPI(
-      "inspections:view"
+      "inspections:view", request
     );
 
     if (error) return error;
@@ -65,7 +65,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/inspections/stats request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch inspection statistics" },

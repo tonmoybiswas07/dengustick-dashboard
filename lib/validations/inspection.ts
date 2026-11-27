@@ -20,11 +20,14 @@ export const inspectionSchema = z.object({
     "other",
   ]),
 
-  images: z.array(z.url({ protocol: /^https?$/ }).max(2048)).max(10).default([]),
+  images: z.array(z.url({ protocol: /^https$/ }).max(2048).refine((value) => {
+    const url = new URL(value);
+    return !url.username && !url.password;
+  }, "Use an HTTPS image URL without credentials")).max(10).default([]),
 
   notes: z.string().trim().max(2000).default(""),
 
-  inspectedAt: z.string().datetime(),
+  inspectedAt: z.iso.datetime().refine((value) => Date.parse(value) <= Date.now(), "Inspection date cannot be in the future"),
 });
 
 export type InspectionInput = z.infer<typeof inspectionSchema>;

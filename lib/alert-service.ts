@@ -1,7 +1,8 @@
 import "server-only";
 
+import { getSystemSettings } from "@/lib/settings";
 import { randomUUID } from "crypto";
-import { MongoServerError, type Filter } from "mongodb";
+import { MongoServerError, type Document, type Filter, type WithId } from "mongodb";
 
 import {
   alertsCollection,
@@ -71,16 +72,29 @@ async function createAlert(data: AlertInput) {
   }
 }
 
-export async function syncAlerts(regionId?: string) {
-  await alertsCollection.createIndex(
+const syncBatchSize = 250;
+
+function unsyncedSources(filter: Document, type: Alert["type"]) {
+  return [
+    { $match: filter },
+    { $set: { sourceKey: { $toString: "$_id" } } },
     {
-      type: 1,
-      sourceId: 1,
+      $lookup: {
+        from: "alerts",
+        localField: "sourceKey",
+        foreignField: "sourceId",
+        pipeline: [{ $match: { type } }, { $project: { _id: 1 } }, { $limit: 1 }],
+        as: "existingAlert",
+      },
     },
-    {
-      unique: true,
-    }
-  );
+    { $match: { "existingAlert.0": { $exists: false } } },
+    { $limit: syncBatchSize + 1 },
+    { $unset: ["sourceKey", "existingAlert"] },
+  ];
+}
+
+export async function syncAlerts(regionId?: string) {
+  const settings = await getSystemSettings();
 
   const regionFilter = regionId
     ? { regionId }
@@ -106,11 +120,17 @@ export async function syncAlerts(regionId?: string) {
     },
   };
 
+  const [inspections, tasks] = await Promise.all([
+    settings.positiveDetectionAlerts
+      ? inspectionsCollection.aggregate<WithId<Inspection>>(unsyncedSources(inspectionFilter, "positive_detection"), { maxTimeMS: 15_000 }).toArray()
+      : [],
+    settings.overdueTaskAlerts
+      ? fieldTasksCollection.aggregate<WithId<FieldTask>>(unsyncedSources(taskFilter, "overdue_task"), { maxTimeMS: 15_000 }).toArray()
+      : [],
+  ]);
   let created = 0;
 
-  for await (const inspection of inspectionsCollection.find(
-    inspectionFilter
-  )) {
+  for (const inspection of inspections.slice(0, syncBatchSize)) {
     created += await createAlert({
       title: "Verified Positive Detection",
 
@@ -133,9 +153,7 @@ export async function syncAlerts(regionId?: string) {
     });
   }
 
-  for await (const task of fieldTasksCollection.find(
-    taskFilter
-  )) {
+  for (const task of tasks.slice(0, syncBatchSize)) {
     created += await createAlert({
       title: "Overdue Field Task",
 
@@ -163,5 +181,5 @@ export async function syncAlerts(regionId?: string) {
     });
   }
 
-  return { created };
+  return { created, hasMore: inspections.length > syncBatchSize || tasks.length > syncBatchSize };
 }

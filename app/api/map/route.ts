@@ -3,11 +3,11 @@ import { authorizeAPI } from "@/lib/api-auth";
 import { inspectionsCollection } from "@/lib/collections";
 import { getInspectionFilter } from "@/lib/inspection-access";
 
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
 
   try {
-    const { session, error } = await authorizeAPI("map:view");
+    const { session, error } = await authorizeAPI("map:view", request);
 
     if (error) return error;
 
@@ -63,7 +63,7 @@ export async function GET() {
       truncated: total > inspections.length,
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/map request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch map inspections" },

@@ -1,5 +1,7 @@
 "use client";
 
+import { loadDirectory } from "@/lib/directory";
+
 import { useEffect, useState } from "react";
 import {
   ClipboardList,
@@ -66,6 +68,8 @@ export default function FieldOperationsManager({
     "operations:manage"
   );
 
+  const canUpdate = hasPermission(role, "operations:update");
+
   const [tasks, setTasks] = useState<FieldTaskDTO[]>([]);
   const [workers, setWorkers] = useState<FieldWorker[]>([]);
 
@@ -124,24 +128,11 @@ export default function FieldOperationsManager({
         setTotalPages(result.pagination.totalPages);
 
         if (canManage) {
-          const workerResponse = await fetch(
-            "/api/field-operations/workers",
-            {
-              cache: "no-store",
-              signal: controller.signal,
-            }
-          );
-
-          const workerResult =
-            await workerResponse.json();
-
-          if (!workerResponse.ok) {
-            throw new Error(workerResult.message);
-          }
+          const workers = await loadDirectory<FieldWorker>("/api/field-operations/workers", controller.signal);
 
           if (controller.signal.aborted) return;
 
-          setWorkers(workerResult.data);
+          setWorkers(workers);
         }
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -347,7 +338,7 @@ export default function FieldOperationsManager({
               <TaskTable
                 tasks={tasks}
                 canManage={canManage}
-                canUpdate={canManage}
+                canUpdate={canUpdate}
                 onUpdate={handleUpdate}
               />
 

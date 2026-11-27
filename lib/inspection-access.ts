@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getRegionalScope } from "@/lib/permissions";
 import type { Filter } from "mongodb";
 import type { Inspection } from "@/app/types/inspection";
 
@@ -12,22 +13,8 @@ type InspectionUser = {
 export function getInspectionFilter(
   user: InspectionUser
 ): Filter<Omit<Inspection, "_id">> | null {
-  if (user.role === "admin") {
-    return {};
-  }
-
-  if (!user.regionId) {
-    return null;
-  }
-
-  if (user.role === "field_worker") {
-    return {
-      regionId: user.regionId,
-      inspectorId: user.id,
-    };
-  }
-
-  return {
-    regionId: user.regionId,
-  };
+  const scope = getRegionalScope(user, "inspections:view");
+  if (!scope) return null;
+  const { ownerId, ...region } = scope;
+  return ownerId ? { ...region, inspectorId: ownerId } : region;
 }

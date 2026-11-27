@@ -1,72 +1,100 @@
-import { ClipboardList, MapPinned, Clock3, UsersRound } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { dashboardStats } from "@/app/constants/dashboard-data";
+import {
+  ClipboardList,
+  ScanEye,
+  UsersRound,
+  BellRing,
+} from "lucide-react";
 
-const stats = [
-  {
-    title: "Total Inspections",
-    value: dashboardStats.totalInspections,
-    icon: ClipboardList,
-    color: "text-teal-600 dark:text-teal-400",
-    background: "bg-teal-500/10",
-    description: "All recorded inspections",
-  },
-  {
-    title: "Positive Sites",
-    value: dashboardStats.positiveSites,
-    icon: MapPinned,
-    color: "text-red-600 dark:text-red-400",
-    background: "bg-red-500/10",
-    description: "Verified larvae-positive sites",
-  },
-  {
-    title: "Pending Reviews",
-    value: dashboardStats.pendingReviews,
-    icon: Clock3,
-    color: "text-amber-600 dark:text-amber-400",
-    background: "bg-amber-500/10",
-    description: "Awaiting expert verification",
-  },
-  {
-    title: "Active Inspectors",
-    value: dashboardStats.activeInspectors,
-    icon: UsersRound,
-    color: "text-blue-600 dark:text-blue-400",
-    background: "bg-blue-500/10",
-    description: "Active field personnel",
-  },
-];
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 
-export default function StatsCards() {
+import type {
+  DashboardStatistics,
+} from "@/app/types/dashboard";
+
+export default function StatsCards({
+  statistics,
+  range,
+}: {
+  statistics: DashboardStatistics;
+  range: string;
+}) {
+  const cards = [
+    {
+      title: "Total Inspections",
+      value: statistics.totalInspections,
+      description: `Last ${range} days`,
+      icon: ClipboardList,
+      color: "text-teal-600",
+      background: "bg-teal-500/10",
+    },
+    {
+      title: "Verified Positive Detections",
+      value: statistics.verifiedDetections,
+      description: `Last ${range} days`,
+      icon: ScanEye,
+      color: "text-orange-600",
+      background: "bg-orange-500/10",
+    },
+    {
+      title: "Active Field Workers",
+      value: statistics.activeFieldWorkers,
+      description: "Enabled worker accounts",
+      icon: UsersRound,
+      color: "text-blue-600",
+      background: "bg-blue-500/10",
+    },
+    {
+      title: "Active Alerts",
+      value: statistics.activeAlerts,
+      description: "Currently unresolved alerts",
+      icon: BellRing,
+      color: "text-red-600",
+      background: "bg-red-500/10",
+    },
+  ].filter((card) => card.value !== null);
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {stats.map((stat) => {
-        const Icon = stat.icon;
+    <div
+      className={`grid gap-4 sm:grid-cols-2 ${
+        cards.length === 4
+          ? "xl:grid-cols-4"
+          : cards.length === 3
+            ? "xl:grid-cols-3"
+            : ""
+      }`}
+    >
+      {cards.map((card) => {
+        const Icon = card.icon;
 
         return (
           <Card
-            key={stat.title}
-            className="gap-0 py-0 shadow-sm transition-shadow hover:shadow-md"
+            key={card.title}
+            className="gap-0 py-0"
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
+                  {card.title}
                 </p>
 
                 <div
-                  className={`rounded-xl p-3 ${stat.background} ${stat.color}`}
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${card.background}`}
                 >
-                  <Icon size={21} />
+                  <Icon
+                    className={`size-5 ${card.color}`}
+                  />
                 </div>
               </div>
 
-              <h2 className="mt-3 text-3xl font-bold tracking-tight">
-                {stat.value.toLocaleString("en-US")}
+              <h2 className="mt-4 text-3xl font-bold tracking-tight">
+                {card.value?.toLocaleString()}
               </h2>
 
               <p className="mt-2 text-xs text-muted-foreground">
-                {stat.description}
+                {card.description}
               </p>
             </CardContent>
           </Card>

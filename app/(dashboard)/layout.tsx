@@ -1,3 +1,4 @@
+import { getPersonalSettings } from "@/lib/settings";
 import { requirePermission } from "@/lib/session";
 import Sidebar from "@/components/dashboard/sidebar/Sidebar";
 import Navbar from "@/components/dashboard/navbar/Navbar";
@@ -9,6 +10,7 @@ export default async function DashboardLayout({
 }) {
   const session = await requirePermission("dashboard:view");
 
+  const preferences = await getPersonalSettings(session.user.id);
   const role = session.user.role ?? "";
 
   return (
@@ -19,6 +21,7 @@ export default async function DashboardLayout({
 
       <div className="min-w-0 lg:pl-64">
         <Navbar
+          preferences={preferences}
           user={{
             name: session.user.name,
             email: session.user.email,

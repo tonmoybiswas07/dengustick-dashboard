@@ -1,3 +1,6 @@
+import client from "@/lib/db";
+import { audit } from "@/lib/audit";
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { ObjectId } from "mongodb";
 
 import { authorizeAPI } from "@/lib/api-auth";
@@ -36,7 +39,7 @@ export async function PATCH(
       );
     }
 
-    const body = await request.json().catch(() => null);
+    const body = await readJSON(request);
 
     const validation = reviewSchema.safeParse(body);
 
@@ -72,42 +75,48 @@ export async function PATCH(
       reviewedAt: new Date(),
     };
 
-    const result = await inspectionsCollection.updateOne(
-      {
-        ...filter,
-        _id: new ObjectId(id),
-        status: {
-          $in: ["pending", "under_review"],
-        },
-      },
-      {
-        $set: {
-          status: data.decision,
-          review,
-          updatedAt: new Date(),
-        },
-      }
-    );
-
-    if (!result.matchedCount) {
-      return Response.json(
+    return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
+      const reviewed = await inspectionsCollection.findOneAndUpdate(
         {
-          message:
-            "Inspection unavailable or already reviewed",
+          ...filter,
+          _id: new ObjectId(id),
+          status: {
+            $in: ["pending", "under_review"],
+          },
         },
-        { status: 409 }
+        {
+          $set: {
+            status: data.decision,
+            review,
+            updatedAt: new Date(),
+          },
+        },
+        { projection: { regionId: 1 }, session: dbSession },
       );
-    }
 
-    return Response.json({
-      success: true,
-      message:
-        data.decision === "verified"
-          ? "Inspection verified successfully"
-          : "Inspection rejected successfully",
-    });
+      if (!reviewed) {
+        return Response.json(
+          {
+            message:
+              "Inspection unavailable or already reviewed",
+          },
+          { status: 409 }
+        );
+      }
+
+      await audit({ actorId: session.user.id, action: "inspection.review", resource: "inspection", resourceId: id, regionId: reviewed.regionId, metadata: { decision: data.decision } }, dbSession);
+
+      return Response.json({
+        success: true,
+        message:
+          data.decision === "verified"
+            ? "Inspection verified successfully"
+            : "Inspection rejected successfully",
+      });
+    }));
   } catch (error) {
-    console.error(error);
+    if (error instanceof RequestBodyTooLarge) return error.response();
+    console.error("api/ai-review/[id] request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to submit review" },

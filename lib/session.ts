@@ -1,15 +1,18 @@
 import "server-only";
 
+import { hasActiveRegion } from "@/lib/region-security";
 import { cache } from "react";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
 import type { Permission } from "@/app/types/auth";
 
 export const getSession = cache(async () => {
-  return auth.api.getSession({
-    headers: await headers(),
+  const requestHeaders = await headers();
+  if (!requestHeaders.has("cookie")) return null;
+  return getAuth().api.getSession({
+    headers: requestHeaders,
     query: { disableCookieCache: true },
   });
 });
@@ -21,7 +24,7 @@ export async function requireAuth() {
     redirect("/login");
   }
 
-  if (session.user.banned) {
+  if (session.user.banned || !(await hasActiveRegion(session.user))) {
     redirect("/unauthorized");
   }
 

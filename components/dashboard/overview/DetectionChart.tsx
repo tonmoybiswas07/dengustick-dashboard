@@ -1,112 +1,162 @@
 "use client";
 
-import { Pie, PieChart } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+import {
+  ChartPie,
+  Database,
+} from "lucide-react";
 
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
 } from "@/components/ui/card";
 
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import { detectionDistribution } from "@/app/constants/dashboard-data";
+import type {
+  DetectionDistribution,
+} from "@/app/types/dashboard";
 
-const chartConfig = {
-  value: {
-    label: "Inspections",
-  },
-  Negative: {
-    label: "Negative",
-    color: "#0d9488",
-  },
-  Positive: {
-    label: "Positive",
-    color: "#ef4444",
-  },
-  Pending: {
-    label: "Pending",
-    color: "#94a3b8",
-  },
-} satisfies ChartConfig;
+const colors: Record<string, string> = {
+  Positive: "#ef4444",
+  Negative: "#0d9488",
+  Inconclusive: "#f59e0b",
+};
 
-export default function DetectionChart() {
-  const total = detectionDistribution.reduce(
+export default function DetectionChart({
+  data,
+}: {
+  data: DetectionDistribution[];
+}) {
+  const total = data.reduce(
     (sum, item) => sum + item.value,
-    0,
+    0
   );
 
   return (
-    <Card className="min-w-0 shadow-sm">
+    <Card className="min-w-0">
       <CardHeader>
-        <CardTitle>Detection Distribution</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <ChartPie className="size-5 text-primary" />
+          Detection Distribution
+        </CardTitle>
+
         <CardDescription>
-          Inspection outcomes by verification status
+          Manually verified detection results.
         </CardDescription>
       </CardHeader>
 
       <CardContent>
-        <div className="relative">
-          <ChartContainer
-            config={chartConfig}
-            className="mx-auto h-[220px] w-full"
-          >
-            <PieChart>
-              <ChartTooltip
-                content={<ChartTooltipContent nameKey="name" hideLabel />}
-              />
+        {total === 0 ? (
+          <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-center">
+            <Database className="size-10 text-muted-foreground" />
 
-              <Pie
-                data={detectionDistribution}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={65}
-                outerRadius={95}
-                strokeWidth={3}
-                paddingAngle={2}
-              />
-            </PieChart>
-          </ChartContainer>
+            <p className="font-medium">
+              No verified detections
+            </p>
 
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <h3 className="text-3xl font-bold">
-              {total.toLocaleString("en-US")}
-            </h3>
-
-            <p className="text-xs text-muted-foreground">Total Inspections</p>
+            <p className="text-sm text-muted-foreground">
+              Verified results will appear here.
+            </p>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="relative h-[220px] w-full">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <PieChart>
+                  <Pie
+                    data={data}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={65}
+                    outerRadius={95}
+                    paddingAngle={2}
+                    stroke="none"
+                  >
+                    {data.map((item) => (
+                      <Cell
+                        key={item.name}
+                        fill={
+                          colors[item.name] ??
+                          "#94a3b8"
+                        }
+                      />
+                    ))}
+                  </Pie>
 
-        <div className="mt-4 space-y-3">
-          {detectionDistribution.map((item) => (
-            <div key={item.name} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className="size-3 rounded-full"
-                  style={{ backgroundColor: item.fill }}
-                />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--card)",
+                      borderColor: "var(--border)",
+                      borderRadius: "12px",
+                      color: "var(--foreground)",
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
 
-                <span className="text-sm text-muted-foreground">
-                  {item.name}
-                </span>
-              </div>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-3xl font-bold">
+                  {total}
+                </p>
 
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold">{item.value}</span>
-
-                <span className="w-12 text-right text-xs text-muted-foreground">
-                  {((item.value / total) * 100).toFixed(1)}%
-                </span>
+                <p className="text-xs text-muted-foreground">
+                  Verified Results
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+
+            <div className="mt-4 space-y-3">
+              {data.map((item) => (
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="size-3 rounded-full"
+                      style={{
+                        backgroundColor:
+                          colors[item.name],
+                      }}
+                    />
+
+                    <span className="text-sm text-muted-foreground">
+                      {item.name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold">
+                      {item.value}
+                    </span>
+
+                    <span className="w-12 text-right text-xs text-muted-foreground">
+                      {(
+                        (item.value / total) *
+                        100
+                      ).toFixed(1)}
+                      %
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

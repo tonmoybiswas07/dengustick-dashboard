@@ -1,3 +1,5 @@
+import { directoryPageSize } from "@/lib/directory";
+import { paginationQuery } from "@/lib/validations/query";
 import { connection } from "next/server";
 
 import { authorizeAPI } from "@/lib/api-auth";
@@ -7,12 +9,12 @@ import {
   fieldTasksCollection,
 } from "@/lib/collections";
 
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
 
   try {
     const { session, error } = await authorizeAPI(
-      "operations:manage"
+      "operations:manage", request
     );
 
     if (error) return error;
@@ -26,6 +28,10 @@ export async function GET() {
       );
     }
 
+    const parsed = paginationQuery.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+    if (!parsed.success) return Response.json({ message: "Invalid directory page" }, { status: 400 });
+    const { page } = parsed.data;
+
     const workers = await usersCollection
       .find({
         role: "field_worker",
@@ -37,10 +43,13 @@ export async function GET() {
         email: 1,
         regionId: 1,
       })
-      .sort({ name: 1 })
+      .sort({ name: 1, _id: 1 })
+      .skip((page - 1) * directoryPageSize)
+      .limit(directoryPageSize + 1)
       .toArray();
 
-    const workerIds = workers.map(
+    const visibleWorkers = workers.slice(0, directoryPageSize);
+    const workerIds = visibleWorkers.map(
       (worker) => worker._id.toString()
     );
 
@@ -93,7 +102,7 @@ export async function GET() {
       taskStats.map((item) => [item._id, item])
     );
 
-    const data = workers.map((worker) => {
+    const data = visibleWorkers.map((worker) => {
       const id = worker._id.toString();
       const stats = statsMap.get(id);
 
@@ -110,10 +119,11 @@ export async function GET() {
 
     return Response.json({
       success: true,
+      pagination: { page, hasNext: workers.length > directoryPageSize },
       data,
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/field-operations/workers request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch field workers" },

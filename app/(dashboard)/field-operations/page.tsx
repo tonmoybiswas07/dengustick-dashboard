@@ -4,7 +4,7 @@ import FieldOperationsManager from "@/components/dashboard/field-operations/Fiel
 
 export default async function FieldOperationsPage() {
   const session = await requirePermission(
-    "operations:manage"
+    "operations:view"
   );
 
   return (

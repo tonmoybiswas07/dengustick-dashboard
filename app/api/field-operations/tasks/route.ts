@@ -1,3 +1,8 @@
+import client from "@/lib/db";
+import { lockRegion } from "@/lib/region-security";
+import { taskQuery } from "@/lib/validations/query";
+import { audit } from "@/lib/audit";
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { connection } from "next/server";
 import { randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
@@ -8,7 +13,6 @@ import { authorizeAPI } from "@/lib/api-auth";
 import {
   fieldTasksCollection,
   usersCollection,
-  regionsCollection,
 } from "@/lib/collections";
 
 import { createTaskSchema } from "@/lib/validations/field-operation";
@@ -20,7 +24,7 @@ export async function GET(request: Request) {
 
   try {
     const { session, error } = await authorizeAPI(
-      "operations:manage"
+      "operations:view"
     );
 
     if (error) return error;
@@ -46,13 +50,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
 
-    const status = searchParams.get("status") ?? "all";
-
-    const rawPage = Number(searchParams.get("page") ?? 1);
-
-    const page = Number.isSafeInteger(rawPage)
-      ? Math.max(1, Math.min(rawPage, 100000))
-      : 1;
+    const parsed = taskQuery.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) {
+      return Response.json({ message: "Invalid query parameters" }, { status: 400 });
+    }
+    const { page, status } = parsed.data;
 
     const limit = 10;
 
@@ -135,11 +137,11 @@ export async function GET(request: Request) {
         page,
         limit,
         total: filteredTotal,
-        totalPages: Math.ceil(filteredTotal / limit),
+        totalPages: Math.min(1000, Math.ceil(filteredTotal / limit)),
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/field-operations/tasks request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch tasks" },
@@ -156,7 +158,7 @@ export async function POST(request: Request) {
 
     if (error) return error;
 
-    const body = await request.json().catch(() => null);
+    const body = await readJSON(request);
 
     const validation = createTaskSchema.safeParse(body);
 
@@ -190,72 +192,72 @@ export async function POST(request: Request) {
       );
     }
 
-    const worker = await usersCollection.findOne({
-      _id: new ObjectId(data.assignedTo),
-      role: "field_worker",
-      banned: { $ne: true },
-      ...(isAdmin ? {} : { regionId: user.regionId }),
-    });
+    return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
+      const worker = await usersCollection.findOne({
+        _id: new ObjectId(data.assignedTo),
+        role: "field_worker",
+        banned: { $ne: true },
+        ...(isAdmin ? {} : { regionId: user.regionId }),
+      }, { session: dbSession });
 
-    if (!worker?.regionId || !ObjectId.isValid(worker.regionId)) {
+      if (!worker?.regionId || !ObjectId.isValid(worker.regionId)) {
+        return Response.json(
+          { message: "Field worker or assigned region not found" },
+          { status: 404 }
+        );
+      }
+
+      if (!(await lockRegion(dbSession, worker.regionId))) {
+        return Response.json(
+          { message: "The worker must belong to an active region" },
+          { status: 409 }
+        );
+      }
+
+      const task: Omit<FieldTask, "_id"> = {
+        taskId: `TASK-${randomUUID()}`,
+        title: data.title,
+        description: data.description,
+        regionId: worker.regionId,
+        location: data.location,
+
+        assignedTo: worker._id.toString(),
+        assignedToName: worker.name,
+
+        assignedBy: session.user.id,
+        assignedByName: session.user.name,
+
+        priority: data.priority,
+        status: "assigned",
+        inspectionId: null,
+
+        deadline: new Date(data.deadline),
+        completedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result =
+        await fieldTasksCollection.insertOne(task, { session: dbSession });
+
+      await audit({ actorId: user.id, action: "task.assign", resource: "task", resourceId: result.insertedId.toHexString(), regionId: task.regionId }, dbSession);
+
       return Response.json(
-        { message: "Field worker or assigned region not found" },
-        { status: 404 }
-      );
-    }
-
-    const region = await regionsCollection.findOne(
-      { _id: new ObjectId(worker.regionId), isActive: true },
-      { projection: { _id: 1 } }
-    );
-
-    if (!region) {
-      return Response.json(
-        { message: "The worker must belong to an active region" },
-        { status: 409 }
-      );
-    }
-
-    const task: Omit<FieldTask, "_id"> = {
-      taskId: `TASK-${randomUUID()}`,
-      title: data.title,
-      description: data.description,
-      regionId: worker.regionId,
-      location: data.location,
-
-      assignedTo: worker._id.toString(),
-      assignedToName: worker.name,
-
-      assignedBy: session.user.id,
-      assignedByName: session.user.name,
-
-      priority: data.priority,
-      status: "assigned",
-      inspectionId: null,
-
-      deadline: new Date(data.deadline),
-      completedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const result =
-      await fieldTasksCollection.insertOne(task);
-
-    return Response.json(
-      {
-        success: true,
-        message: "Task assigned successfully",
-        data: {
-          ...task,
-          isOverdue: false,
-          _id: result.insertedId.toString(),
+        {
+          success: true,
+          message: "Task assigned successfully",
+          data: {
+            ...task,
+            isOverdue: false,
+            _id: result.insertedId.toString(),
+          },
         },
-      },
-      { status: 201 }
-    );
+        { status: 201 }
+      );
+    }));
   } catch (error) {
-    console.error(error);
+    if (error instanceof RequestBodyTooLarge) return error.response();
+    console.error("api/field-operations/tasks request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to assign task" },

@@ -6,11 +6,11 @@ import {
   regionsCollection,
 } from "@/lib/collections";
 
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
 
   try {
-    const { error } = await authorizeAdmin();
+    const { error } = await authorizeAdmin(request);
 
     if (error) return error;
 
@@ -56,7 +56,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/administration/stats request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch statistics" },

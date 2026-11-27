@@ -1,3 +1,4 @@
+import type { ModelPrediction } from "@/lib/inference";
 import type { InspectionReview } from "@/app/types/review";
 
 export type InspectionStatus =
@@ -42,7 +43,9 @@ export interface Inspection {
   status: InspectionStatus;
   notes: string;
 
+  prediction?: ModelPrediction;
   review?: InspectionReview;
+  linkedTaskId?: string;
 
   inspectedAt: Date;
   createdAt: Date;
@@ -50,10 +53,11 @@ export interface Inspection {
 }
 
 export interface InspectionDTO
-  extends Omit<Inspection, "_id" | "createdAt" | "updatedAt" | "inspectedAt" | "review"> {
+  extends Omit<Inspection, "_id" | "createdAt" | "updatedAt" | "inspectedAt" | "review" | "prediction"> {
   _id: string;
   createdAt: string;
   updatedAt: string;
   inspectedAt: string;
+  prediction?: Omit<ModelPrediction, "inferredAt"> & { inferredAt: string };
   review?: Omit<InspectionReview, "reviewedAt"> & { reviewedAt: string };
 }

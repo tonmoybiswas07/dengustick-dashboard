@@ -24,6 +24,7 @@ export async function GET() {
 
     const count = await alertsCollection.countDocuments({
       ...filter,
+      status: "active",
       readBy: {
         $ne: session.user.id,
       },
@@ -34,7 +35,7 @@ export async function GET() {
       count,
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/alerts/count request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch notification count" },

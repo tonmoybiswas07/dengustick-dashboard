@@ -5,12 +5,12 @@ export const createTaskSchema = z.object({
 
   description: z.string().trim().min(5).max(2000),
 
-  assignedTo: z.string().trim().min(1),
+  assignedTo: z.string().trim().regex(/^[a-fA-F0-9]{24}$/),
 
   location: z.object({
-    address: z.string().trim().min(3),
-    district: z.string().trim().min(1),
-    area: z.string().trim().min(1),
+    address: z.string().trim().min(3).max(300),
+    district: z.string().trim().min(1).max(100),
+    area: z.string().trim().min(1).max(100),
   }),
 
   priority: z.enum([

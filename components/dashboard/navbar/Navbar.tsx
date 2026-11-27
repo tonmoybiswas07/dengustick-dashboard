@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -27,6 +28,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -38,6 +40,7 @@ import { navigation } from "@/app/constants/navigation";
 import NotificationBell from "./NotificationBell";
 
 interface NavbarProps {
+  preferences: import("@/lib/validations/account").PersonalSettings;
   user: {
     name: string;
     email: string;
@@ -53,8 +56,11 @@ const roleLabels: Record<string, string> = {
   researcher: "Researcher",
 };
 
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar({ user, preferences }: NavbarProps) {
   const { resolvedTheme, setTheme } = useTheme();
+  useEffect(() => {
+    setTheme(preferences.theme);
+  }, [preferences.theme, user.email, setTheme]);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -76,6 +82,22 @@ export default function Navbar({ user }: NavbarProps) {
       .map((word) => word.charAt(0))
       .join("")
       .toUpperCase() || "DV";
+
+  async function toggleTheme() {
+    const theme = resolvedTheme === "dark" ? "light" : "dark";
+    try {
+      const response = await fetch("/api/account/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme }),
+      });
+      if (!response.ok) throw new Error("Unable to save theme");
+      setTheme(theme);
+      router.refresh();
+    } catch {
+      toast.error("Unable to save theme");
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -143,13 +165,13 @@ export default function Navbar({ user }: NavbarProps) {
           variant="ghost"
           size="icon"
           aria-label="Toggle theme"
-          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          onClick={toggleTheme}
         >
           <Sun className="size-5 dark:hidden" />
           <Moon className="hidden size-5 dark:block" />
         </Button>
 
-        {hasPermission(user.role, "alerts:view") && <NotificationBell />}
+        {preferences.alertNotifications && hasPermission(user.role, "alerts:view") && <NotificationBell />}
 
         <div className="h-8 w-px bg-border" />
 
@@ -173,31 +195,38 @@ export default function Navbar({ user }: NavbarProps) {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>
-              <div className="space-y-1">
-                <p className="font-semibold">{user.name}</p>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                <div className="space-y-1">
+                  <p className="font-semibold">{user.name}</p>
 
-                <p className="truncate text-xs font-normal text-muted-foreground">
-                  {user.email}
-                </p>
+                  <p className="truncate text-xs font-normal text-muted-foreground">
+                    {user.email}
+                  </p>
 
-                <p className="text-xs font-normal text-primary">
-                  {roleLabels[user.role] || "User"}
-                </p>
-              </div>
-            </DropdownMenuLabel>
+                  <p className="text-xs font-normal text-primary">
+                    {roleLabels[user.role] || "User"}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
 
-            <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
+              <DropdownMenuItem render={<Link href="/profile" />}>Profile</DropdownMenuItem>
+              <DropdownMenuItem render={<Link href="/settings" />}>Settings</DropdownMenuItem>
+              {user.role === "admin" && (
+                <DropdownMenuItem render={<Link href="/audit" />}>Audit log</DropdownMenuItem>
+              )}
 
-            <DropdownMenuItem
-              disabled={loggingOut}
-              onClick={handleLogout}
-              className="cursor-pointer text-destructive focus:text-destructive"
-            >
-              <LogOut size={16} />
+              <DropdownMenuItem
+                disabled={loggingOut}
+                onClick={handleLogout}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <LogOut size={16} />
 
-              {loggingOut ? "Logging out..." : "Log out"}
-            </DropdownMenuItem>
+                {loggingOut ? "Logging out..." : "Log out"}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

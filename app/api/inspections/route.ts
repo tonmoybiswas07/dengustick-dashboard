@@ -1,3 +1,7 @@
+import client from "@/lib/db";
+import { inspectionQuery } from "@/lib/validations/query";
+import { audit } from "@/lib/audit";
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { connection } from "next/server";
 import { ObjectId } from "mongodb";
 import { randomUUID } from "node:crypto";
@@ -11,28 +15,18 @@ export async function GET(request: Request) {
   await connection();
 
   try {
-    const { session, error } = await authorizeAPI("inspections:view");
+    const { session, error } = await authorizeAPI("inspections:view", request);
 
     if (error) return error;
 
     const user = session.user;
     const { searchParams } = new URL(request.url);
 
-    const rawPage = Number(searchParams.get("page") ?? 1);
-    const page = Number.isSafeInteger(rawPage)
-      ? Math.max(1, Math.min(rawPage, 100000))
-      : 1;
-
-    const limit = Math.min(
-      100,
-      Math.max(
-        1,
-        parseInt(searchParams.get("limit") || "10", 10) || 10
-      )
-    );
-
-    const search = searchParams.get("search")?.trim().slice(0, 100);
-    const status = searchParams.get("status");
+    const parsed = inspectionQuery.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) {
+      return Response.json({ message: "Invalid query parameters" }, { status: 400 });
+    }
+    const { page, limit, search, status } = parsed.data;
 
     const filter: Filter<Omit<Inspection, "_id">> = {};
 
@@ -115,11 +109,11 @@ export async function GET(request: Request) {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.min(1000, Math.ceil(total / limit)),
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/inspections request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch inspections" },
@@ -134,7 +128,7 @@ export async function POST(request: Request) {
 
     if (error) return error;
 
-    const body = await request.json().catch(() => null);
+    const body = await readJSON(request);
     const validation = inspectionSchema.safeParse(body);
 
     if (!validation.success) {
@@ -197,21 +191,26 @@ export async function POST(request: Request) {
       updatedAt: now,
     };
 
-    const result = await inspectionsCollection.insertOne(inspection);
+    return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
+      const result = await inspectionsCollection.insertOne(inspection, { session: dbSession });
 
-    return Response.json(
-      {
-        success: true,
-        message: "Inspection created successfully",
-        data: {
-          ...inspection,
-          _id: result.insertedId.toString(),
+      await audit({ actorId: user.id, action: "inspection.create", resource: "inspection", resourceId: result.insertedId.toHexString(), regionId: regionId }, dbSession);
+
+      return Response.json(
+        {
+          success: true,
+          message: "Inspection created successfully",
+          data: {
+            ...inspection,
+            _id: result.insertedId.toString(),
+          },
         },
-      },
-      { status: 201 }
-    );
+        { status: 201 }
+      );
+    }));
   } catch (error) {
-    console.error(error);
+    if (error instanceof RequestBodyTooLarge) return error.response();
+    console.error("api/inspections request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to create inspection" },

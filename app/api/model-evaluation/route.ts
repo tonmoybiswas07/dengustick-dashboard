@@ -1,3 +1,5 @@
+import { statisticsQuery } from "@/lib/validations/query";
+import { connection } from "next/server";
 import type { Document } from "mongodb";
 
 import { authorizeAPI } from "@/lib/api-auth";
@@ -32,9 +34,11 @@ interface ConfidenceAggregate {
 }
 
 export async function GET(request: Request) {
+    await connection();
+
     try {
         const { session, error } = await authorizeAPI(
-            "models:evaluate"
+            "models:evaluate", request
         );
 
         if (error) return error;
@@ -43,25 +47,11 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
 
-        const range = searchParams.get("range") ?? "30";
-
-        const district =
-            searchParams.get("district") ?? "all";
-
-        const allowedRanges = [
-            "7",
-            "30",
-            "90",
-            "365",
-            "all",
-        ];
-
-        if (!allowedRanges.includes(range)) {
-            return Response.json(
-                { message: "Invalid date range" },
-                { status: 400 }
-            );
+        const parsed = statisticsQuery.safeParse(Object.fromEntries(searchParams));
+        if (!parsed.success) {
+          return Response.json({ message: "Invalid query parameters" }, { status: 400 });
         }
+        const { range, district } = parsed.data;
 
         const regionFilter: Document = {};
 
@@ -421,7 +411,7 @@ export async function GET(request: Request) {
             }
         );
     } catch (error) {
-        console.error(error);
+        console.error("api/model-evaluation request failed", error instanceof Error ? error.name : "UnknownError");
 
         return Response.json(
             {

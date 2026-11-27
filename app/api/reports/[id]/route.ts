@@ -1,3 +1,5 @@
+import { rateLimit } from "@/lib/rate-limit";
+import { audit } from "@/lib/audit";
 import { connection } from "next/server";
 import { ObjectId } from "mongodb";
 import type { Filter } from "mongodb";
@@ -25,7 +27,7 @@ export async function GET(
 
   try {
     const { session, error } = await authorizeAPI(
-      "reports:view"
+      "reports:view", request
     );
 
     if (error) return error;
@@ -53,6 +55,7 @@ export async function GET(
       }
 
       filter.regionId = user.regionId;
+      if (user.role === "researcher") filter.generatedBy = user.id;
     }
 
     if (
@@ -91,6 +94,11 @@ export async function GET(
       );
     }
 
+    if (format) {
+      const limited = await rateLimit("report-export", user.id, 10);
+      if (limited) return limited;
+    }
+
     const report =
       await reportsCollection.findOne(filter);
 
@@ -104,7 +112,9 @@ export async function GET(
     const filename = `denguevision-${id}`;
 
     if (format === "csv") {
-      return new Response(generateCSV(report), {
+      const file = generateCSV(report);
+      await audit({ actorId: user.id, action: "report.export", resource: "report", resourceId: id, regionId: report.regionId, metadata: { format } });
+      return new Response(file, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition":
@@ -115,7 +125,9 @@ export async function GET(
     }
 
     if (format === "pdf") {
-      return new Response(generatePDF(report), {
+      const file = generatePDF(report);
+      await audit({ actorId: user.id, action: "report.export", resource: "report", resourceId: id, regionId: report.regionId, metadata: { format } });
+      return new Response(file, {
         headers: {
           "Content-Type": "application/pdf",
           "Content-Disposition":
@@ -140,7 +152,7 @@ export async function GET(
       }
     );
   } catch (error) {
-    console.error(error);
+    console.error("api/reports/[id] request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to retrieve report" },

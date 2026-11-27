@@ -1,3 +1,7 @@
+import client from "@/lib/db";
+import { lockRegion } from "@/lib/region-security";
+import { audit } from "@/lib/audit";
+import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
 import { MongoServerError, ObjectId } from "mongodb";
 
 import { authorizeAdmin } from "@/lib/admin-access";
@@ -19,7 +23,7 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
-    const { error } = await authorizeAdmin(request);
+    const { session, error } = await authorizeAdmin(request);
 
     if (error) return error;
 
@@ -32,7 +36,7 @@ export async function PATCH(
       );
     }
 
-    const body = await request.json().catch(() => null);
+    const body = await readJSON(request);
 
     const validation = regionSchema.safeParse(body);
 
@@ -60,59 +64,55 @@ export async function PATCH(
       );
     }
 
-    if (!data.isActive) {
-      const [activeUsers, activeTasks] =
-        await Promise.all([
-          usersCollection.countDocuments({
-            regionId: regionId.toHexString(),
-            banned: { $ne: true },
-          }),
-
-          fieldTasksCollection.countDocuments({
-            regionId: regionId.toHexString(),
-
-            status: {
-              $in: ["assigned", "in_progress"],
+    return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
+      if (!(await lockRegion(dbSession, id, false))) {
+        return Response.json({ message: "Region not found" }, { status: 404 });
+      }
+      if (!data.isActive) {
+        const activeUsers = await usersCollection.countDocuments({
+          regionId: regionId.toHexString(), banned: { $ne: true },
+        }, { session: dbSession });
+        const activeTasks = await fieldTasksCollection.countDocuments({
+          regionId: regionId.toHexString(), status: { $in: ["assigned", "in_progress"] },
+        }, { session: dbSession });
+        if (activeUsers > 0 || activeTasks > 0) {
+          return Response.json(
+            {
+              message:
+                "Reassign active users and finish active tasks before deactivating this region",
             },
-          }),
-        ]);
+            { status: 409 }
+          );
+        }
+      }
 
-      if (activeUsers > 0 || activeTasks > 0) {
-        return Response.json(
-          {
-            message:
-              "Reassign active users and finish active tasks before deactivating this region",
+      const result = await regionsCollection.updateOne(
+        { _id: regionId },
+
+        {
+          $set: {
+            ...data,
+            updatedAt: new Date(),
           },
-          { status: 409 }
+        }, { session: dbSession },
+      );
+
+      if (!result.matchedCount) {
+        return Response.json(
+          { message: "Region not found" },
+          { status: 404 }
         );
       }
-    }
 
-    await regionsCollection.createIndex({ code: 1 }, { unique: true });
+      await audit({ actorId: session.user.id, action: "region.update", resource: "region", resourceId: id, regionId: id }, dbSession);
 
-    const result = await regionsCollection.updateOne(
-      { _id: regionId },
-
-      {
-        $set: {
-          ...data,
-          updatedAt: new Date(),
-        },
-      }
-    );
-
-    if (!result.matchedCount) {
-      return Response.json(
-        { message: "Region not found" },
-        { status: 404 }
-      );
-    }
-
-    return Response.json({
-      success: true,
-      message: "Region updated successfully",
-    });
+      return Response.json({
+        success: true,
+        message: "Region updated successfully",
+      });
+    }));
   } catch (error) {
+    if (error instanceof RequestBodyTooLarge) return error.response();
     if (
       error instanceof MongoServerError &&
       error.code === 11000 &&
@@ -124,7 +124,7 @@ export async function PATCH(
       );
     }
 
-    console.error(error);
+    console.error("api/administration/regions/[id] request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to update region" },

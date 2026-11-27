@@ -26,6 +26,6 @@ if (process.env.NODE_ENV !== "production") {
   globalForMongo.mongoClient = client;
 }
 
-export const db = client.db("DengueStickDB");
+export const db = client.db(process.env.MONGODB_DB || "DengueStickDB");
 
 export default client;

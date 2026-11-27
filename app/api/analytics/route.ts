@@ -1,3 +1,4 @@
+import { statisticsQuery } from "@/lib/validations/query";
 import { connection } from "next/server";
 import type { Filter } from "mongodb";
 
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
 
   try {
     const { session, error } = await authorizeAPI(
-      "analytics:view"
+      "analytics:view", request
     );
 
     if (error) return error;
@@ -36,17 +37,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
 
-    const range = searchParams.get("range") ?? "30";
-    const district = searchParams.get("district") ?? "all";
-
-    const allowedRanges = ["7", "30", "90", "365", "all"];
-
-    if (!allowedRanges.includes(range)) {
-      return Response.json(
-        { message: "Invalid date range" },
-        { status: 400 }
-      );
+    const parsed = statisticsQuery.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) {
+      return Response.json({ message: "Invalid query parameters" }, { status: 400 });
     }
+    const { range, district } = parsed.data;
 
     const filter: Filter<Omit<Inspection, "_id">> = {
       ...accessFilter,
@@ -323,7 +318,7 @@ export async function GET(request: Request) {
                   },
                 ],
 
-                workers: [
+                ...(user.role !== "researcher" && { workers: [
                   {
                     $sort: { inspectedAt: -1 },
                   },
@@ -384,7 +379,7 @@ export async function GET(request: Request) {
                       },
                     },
                   },
-                ],
+                ] }),
               },
             },
           ])
@@ -476,7 +471,7 @@ export async function GET(request: Request) {
       data,
     });
   } catch (error) {
-    console.error(error);
+    console.error("api/analytics request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
       { message: "Failed to fetch analytics" },

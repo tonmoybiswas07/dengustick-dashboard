@@ -1,12 +1,18 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+
+import {
+  ClipboardList,
+  ArrowUpRight,
+  MapPin,
+  Eye,
+} from "lucide-react";
 
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
 } from "@/components/ui/card";
 
 import {
@@ -18,78 +24,194 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { recentInspections } from "@/app/constants/dashboard-data";
+
+import type {
+  RecentInspection,
+} from "@/app/types/dashboard";
 
 const statusStyles: Record<string, string> = {
-  Positive: "bg-red-500/10 text-red-600 dark:text-red-400",
-  Negative: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-  Pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  pending:
+    "border-amber-500/20 bg-amber-500/10 text-amber-600",
+
+  under_review:
+    "border-blue-500/20 bg-blue-500/10 text-blue-600",
+
+  verified:
+    "border-emerald-500/20 bg-emerald-500/10 text-emerald-600",
+
+  rejected:
+    "border-red-500/20 bg-red-500/10 text-red-600",
 };
 
-export default function RecentInspections() {
-  return (
-    <Card className="min-w-0 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <div className="space-y-1">
-          <CardTitle>Recent Inspections</CardTitle>
-          <CardDescription>
-            Latest submitted field inspection records
-          </CardDescription>
-        </div>
+const resultStyles: Record<string, string> = {
+  positive:
+    "border-red-500/20 bg-red-500/10 text-red-600",
 
-        <Link href="/inspections" className={buttonVariants({ variant: "outline", size: "sm" })}>
-          View All
-          <ArrowUpRight size={15} />
-        </Link>
+  negative:
+    "border-emerald-500/20 bg-emerald-500/10 text-emerald-600",
+
+  inconclusive:
+    "border-amber-500/20 bg-amber-500/10 text-amber-600",
+};
+
+export default function RecentInspections({
+  data,
+}: {
+  data: RecentInspection[];
+}) {
+  return (
+    <Card className="min-w-0">
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="size-5 text-primary" />
+              Recent Inspections
+            </CardTitle>
+
+            <CardDescription className="mt-1">
+              Latest surveillance records.
+            </CardDescription>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/inspections" />}
+          >
+            View All
+              <ArrowUpRight className="size-4" />
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Inspection ID</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Container</TableHead>
-                <TableHead>AI Count</TableHead>
-                <TableHead>Confidence</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
+        {data.length === 0 ? (
+          <div className="flex min-h-[230px] flex-col items-center justify-center gap-3 text-center">
+            <ClipboardList className="size-10 text-muted-foreground" />
 
-            <TableBody>
-              {recentInspections.map((inspection) => (
-                <TableRow key={inspection.id}>
-                  <TableCell className="font-medium">{inspection.id}</TableCell>
+            <p className="font-medium">
+              No inspections found
+            </p>
 
-                  <TableCell>{inspection.location}</TableCell>
-
-                  <TableCell>{inspection.container}</TableCell>
-
-                  <TableCell>{inspection.larvae}</TableCell>
-
-                  <TableCell>{inspection.confidence}%</TableCell>
-
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`border-0 ${statusStyles[inspection.status]}`}
-                    >
-                      {inspection.status}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {inspection.date}
-                  </TableCell>
+            <p className="text-sm text-muted-foreground">
+              No records in the selected date range.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Inspection</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Verified Result</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">
+                    Action
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+
+              <TableBody>
+                {data.map((inspection) => (
+                  <TableRow key={inspection._id}>
+                    <TableCell>
+                      <p
+                        className="max-w-[140px] truncate font-medium"
+                        title={inspection.inspectionId}
+                      >
+                        {inspection.inspectionId}
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {inspection.inspectorName}
+                      </p>
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="size-3.5 text-muted-foreground" />
+
+                        <span>
+                          {inspection.district}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {inspection.area}
+                      </p>
+                    </TableCell>
+
+                    <TableCell>
+                      {inspection.detectionResult ? (
+                        <Badge
+                          variant="outline"
+                          className={`capitalize ${
+                            resultStyles[
+                              inspection.detectionResult
+                            ]
+                          }`}
+                        >
+                          {inspection.detectionResult}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Not verified
+                        </span>
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize ${
+                          statusStyles[
+                            inspection.status
+                          ]
+                        }`}
+                      >
+                        {inspection.status.replaceAll(
+                          "_",
+                          " "
+                        )}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(
+                        inspection.inspectedAt
+                      ).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        timeZone: "Asia/Dhaka",
+                      })}
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        nativeButton={false}
+                        render={<Link
+                          href={`/inspections/${inspection._id}`}
+                          aria-label="View inspection"
+                         />}
+                      >
+                        <Eye className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
