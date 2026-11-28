@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ActivityHistory from "@/components/dashboard/ActivityHistory";
 
 import {
   MoreHorizontal,
@@ -147,6 +148,7 @@ export default function TaskTable({
                     </TableCell>
 
                     <TableCell className="text-right">
+                      <ActivityHistory kind="task" id={task._id} />
                       {task.inspectionId ? (
                         <Link href={`/inspections/${task.inspectionId}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                           Inspection

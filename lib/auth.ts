@@ -1,9 +1,13 @@
 import "server-only";
 
+import { after } from "next/server";
+import { audit } from "@/lib/audit";
+import { getRecoveryMailer } from "@/lib/recovery-mail";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
 import client, { db } from "@/lib/db";
+import { twoFactor } from "better-auth/plugins/two-factor";
 import { admin } from "better-auth/plugins";
 import { ac, authRoles } from "@/lib/auth-access";
 
@@ -30,12 +34,14 @@ function createAuth() {
     adminRoles: ["admin"],
   });
 
+  const mailer = getRecoveryMailer();
   return betterAuth({
     database: mongodbAdapter(db, {
       client,
     }),
 
     secret,
+    onAPIError: { onError: () => console.error("Authentication request could not be completed") },
 
     baseURL: authURL,
     trustedOrigins: authURL ? [new URL(authURL).origin] : [],
@@ -57,7 +63,28 @@ function createAuth() {
       enabled: true,
       disableSignUp: true,
       minPasswordLength: 8,
+      resetPasswordTokenExpiresIn: 1800,
+      revokeSessionsOnPasswordReset: true,
+      ...(mailer && authURL && {
+        async sendResetPassword({ user, token }) {
+          if ("banned" in user && user.banned) return;
+          const link = new URL("/reset-password", authURL);
+          link.hash = new URLSearchParams({ token }).toString();
+          after(async () => {
+            try {
+              await mailer.send(user.email, link.href);
+            } catch {
+              console.error("Recovery email delivery failed");
+            }
+          });
+        },
+        async onPasswordReset({ user }) {
+          await audit({ actorId: user.id, action: "password.reset", resource: "user", resourceId: user.id });
+        },
+      }),
     },
+
+    verification: { storeIdentifier: { default: "plain", overrides: { "reset-password:": "hashed" } } },
 
     user: {
       additionalFields: {
@@ -69,7 +96,7 @@ function createAuth() {
       },
     },
 
-    plugins: [adminPlugin, nextCookies()],
+    plugins: [adminPlugin, twoFactor({ issuer: "DengueStick", skipVerificationOnEnable: false, backupCodeOptions: { storeBackupCodes: "encrypted" } }), nextCookies()],
   });
 }
 

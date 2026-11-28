@@ -26,13 +26,20 @@ export default function InspectionTrendChart({
 }: {
   data: InspectionTrend[];
 }) {
+  const totals = data.reduce((sum, row) => ({
+    inspections: sum.inspections + row.inspections,
+    verified: sum.verified + row.verified,
+    positive: sum.positive + row.positive,
+  }), { inspections: 0, verified: 0, positive: 0 });
   return (
     <Card>
       <CardHeader>
         <CardTitle>Inspection Trends</CardTitle>
 
         <CardDescription>
-          Surveillance activity and verified detection trends
+          {data.length > 0
+            ? `${totals.inspections.toLocaleString()} inspections, ${totals.verified.toLocaleString()} verified, ${totals.positive.toLocaleString()} verified positives`
+            : "Surveillance activity and verified detection trends"}
         </CardDescription>
       </CardHeader>
 

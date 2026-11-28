@@ -15,6 +15,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-dvh bg-background">
+      <a href="#dashboard-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-card focus:p-3 focus:text-foreground">
+        Skip to dashboard content
+      </a>
       <div className="fixed inset-y-0 left-0 z-40 hidden lg:block">
         <Sidebar role={role} />
       </div>
@@ -29,7 +32,7 @@ export default async function DashboardLayout({
           }}
         />
 
-        <main className="mx-auto max-w-[1800px] p-4 md:p-6 lg:p-8">
+        <main id="dashboard-content" tabIndex={-1} className="mx-auto max-w-[1800px] p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>

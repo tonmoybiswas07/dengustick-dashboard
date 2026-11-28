@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -21,6 +20,9 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [challenge, setChallenge] = useState(false);
+  const [backup, setBackup] = useState(false);
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -28,13 +30,18 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      const { error } = await signIn.email({
-        email,
-        password,
+      const endpoint = challenge ? `two-factor/${backup ? "verify-backup-code" : "verify-totp"}` : "sign-in/email";
+      const response = await fetch(`/api/auth/${endpoint}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(challenge ? { code } : { email, password }),
       });
-
-      if (error) {
-        toast.error("Invalid email or password");
+      if (!response.ok) {
+        toast.error(challenge ? "Invalid verification code or expired challenge" : "Invalid email or password");
+        return;
+      }
+      if ((await response.json()).twoFactorRedirect === true) {
+        setPassword("");
+        setChallenge(true);
         return;
       }
 
@@ -65,7 +72,14 @@ export default function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      {challenge ? <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">{backup ? "Recovery code" : "Authenticator code"}
+          <Input autoComplete="one-time-code" inputMode={backup ? "text" : "numeric"} value={code} onChange={(event) => setCode(event.target.value)} required maxLength={40} />
+        </label>
+        <Button disabled={loading} type="submit">{loading ? "Verifying…" : "Verify sign-in"}</Button>
+        <Button variant="outline" type="button" onClick={() => { setBackup(!backup); setCode(""); }}>{backup ? "Use authenticator" : "Use recovery code"}</Button>
+        <Button variant="ghost" type="button" onClick={() => { setChallenge(false); setCode(""); }}>Back to password</Button>
+      </form> : <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium">
             Email address
@@ -134,7 +148,7 @@ export default function LoginForm() {
             </>
           )}
         </Button>
-      </form>
+      </form>}
 
       <div className="rounded-xl border bg-muted/40 p-4">
         <p className="text-center text-xs text-muted-foreground">

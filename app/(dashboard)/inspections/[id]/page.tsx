@@ -64,7 +64,7 @@ export default async function InspectionDetailsPage({
   const history = await auditCollection.find({
     resource: "inspection", resourceId: inspection._id.toHexString(),
     action: { $in: Object.keys(activityLabels) }, outcome: "success",
-  }).project({ actorId: 1, action: 1, timestamp: 1 }).sort({ timestamp: -1 }).limit(20).toArray();
+  }).project({ actorId: 1, action: 1, timestamp: 1, "metadata.decision": 1 }).sort({ timestamp: -1 }).limit(20).toArray();
   const actorIds = [...new Set(history.map((event) => event.actorId).filter((id): id is string => typeof id === "string" && ObjectId.isValid(id)))];
   const actors = new Map((await usersCollection.find({ _id: { $in: actorIds.map((id) => new ObjectId(id)) } })
     .project({ name: 1 }).toArray()).map((actor) => [String(actor._id), actor.name]));
@@ -300,7 +300,7 @@ export default async function InspectionDetailsPage({
           {history.length === 0 ? <p className="text-sm text-muted-foreground">No recorded activity.</p> : (
             <ol className="space-y-3 text-sm">
               {history.map((event) => <li key={String(event._id)} className="border-l-2 border-primary/40 pl-3">
-                <p>{activityLabels[event.action]} · {actors.get(event.actorId ?? "") ?? "Account unavailable"}</p>
+                <p>{activityLabels[event.action]}{event.metadata?.decision && ` (${event.metadata.decision})`} · {actors.get(event.actorId ?? "") ?? "Account unavailable"}</p>
                 <time className="text-muted-foreground" dateTime={event.timestamp.toISOString()}>{event.timestamp.toLocaleString("en-GB", { timeZone: "Asia/Dhaka" })}</time>
               </li>)}
             </ol>

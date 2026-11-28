@@ -21,6 +21,12 @@ export const passwordSchema = z.strictObject({
 export const personalSettingsSchema = z.strictObject({
   theme: z.enum(["light", "dark", "system"]),
   alertNotifications: z.boolean(),
+  notifyPositive: z.boolean().optional(),
+  notifyAssignment: z.boolean().optional(),
+  notifyDeadline: z.boolean().optional(),
+  notifyOverdue: z.boolean().optional(),
+  notifyPredictionFailure: z.boolean().optional(),
+  notifyReview: z.boolean().optional(),
 });
 
 export const systemSettingsSchema = z.strictObject({

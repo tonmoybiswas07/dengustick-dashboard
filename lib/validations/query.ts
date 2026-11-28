@@ -20,6 +20,7 @@ export const reviewQuery = paginationQuery.extend({
 });
 
 export const alertQuery = paginationQuery.extend({
+  inbox: z.literal("1").optional(),
   status: z.enum(["all", "active", "resolved", "unread"]).default("all"),
   severity: z.enum(["all", "low", "medium", "high", "critical"]).default("all"),
 });

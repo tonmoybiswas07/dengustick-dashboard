@@ -35,7 +35,9 @@ export default function MapManager({
   const [end, setEnd] = useState("");
   const [region, setRegion] = useState("");
   const [status, setStatus] = useState("all");
-  const [density, setDensity] = useState(false);
+  const [mode, setMode] = useState<"markers" | "grid" | "heat">("markers");
+  const [viewport, setViewport] = useState("");
+  const [loaded, setLoaded] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -52,7 +54,7 @@ export default function MapManager({
         setError("");
 
         const query = new URLSearchParams();
-        for (const [key, value] of Object.entries({ search, district, detection, start, end, region, status })) {
+        for (const [key, value] of Object.entries({ search, district, detection, start, end, region, status, viewport })) {
           if (value && value !== "all") query.set(key, value);
         }
         const response = await fetch(`/api/map?${query}`, {
@@ -63,6 +65,11 @@ export default function MapManager({
         const result = await response.json();
 
         if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            setInspections([]);
+            setDistricts([]);
+            setLoaded(false);
+          }
           throw new Error(
             result.message || "Failed to load map"
           );
@@ -71,6 +78,7 @@ export default function MapManager({
         if (controller.signal.aborted) return;
 
         setInspections(result.data);
+        setLoaded(true);
         setDistricts(result.districts);
         setTruncated(result.truncated);
         setTotal(result.total);
@@ -91,7 +99,7 @@ export default function MapManager({
 
     const timer = setTimeout(fetchInspections, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [refreshKey, search, district, detection, start, end, region, status]);
+  }, [refreshKey, search, district, detection, start, end, region, status, viewport]);
 
   return (
     <div className="space-y-6">
@@ -136,7 +144,7 @@ export default function MapManager({
               setSearch("");
               setDistrict("all");
               setDetection("all");
-              setStart(""); setEnd(""); setRegion(""); setStatus("all");
+              setStart(""); setEnd(""); setRegion(""); setStatus("all"); setViewport("");
             }}
           />
 
@@ -147,14 +155,18 @@ export default function MapManager({
         <label>Inspection status <select className="block rounded border bg-background p-2" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="all">All statuses</option><option value="pending">Pending</option><option value="under_review">Under review</option><option value="verified">Verified only</option><option value="rejected">Rejected</option>
         </select></label>
-        <Button variant="outline" aria-pressed={density} onClick={() => setDensity(!density)}>{density ? "Show clustered markers" : "Show inspection density"}</Button>
+        <label>Map display <select className="block rounded border bg-background p-2" value={mode}
+          onChange={(event) => setMode(event.target.value as typeof mode)}>
+          <option value="markers">Clustered markers</option><option value="grid">Density grid</option><option value="heat">Heatmap</option>
+        </select></label>
+        {viewport && <Button variant="outline" onClick={() => setViewport("")}>Clear map area</Button>}
       </div>
 
-      {loading ? (
+      {loading && !loaded ? (
         <div className="flex h-[600px] items-center justify-center rounded-xl border bg-card">
           <Loader2 className="size-8 motion-safe:animate-spin text-primary" />
         </div>
-      ) : error ? (
+      ) : error && !loaded ? (
         <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-xl border bg-card">
           <p className="text-sm text-destructive">
             {error}
@@ -171,6 +183,8 @@ export default function MapManager({
         </div>
       ) : (
         <>
+          {loading && <p role="status" className="text-sm text-muted-foreground">Updating map…</p>}
+          {error && <p role="alert" className="text-sm text-destructive">{error} Previous results are still displayed.</p>}
           <MapStats inspections={inspections} />
 
           {truncated && (
@@ -182,7 +196,9 @@ export default function MapManager({
 
           <MapView
             inspections={inspections}
-            density={density}
+            mode={mode}
+            viewport={viewport}
+            onViewport={setViewport}
             canViewDetails={hasPermission(
               role,
               "inspections:view"

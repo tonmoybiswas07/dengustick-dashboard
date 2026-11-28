@@ -13,7 +13,8 @@ const login = z.object({
 
 export async function POST(request: Request) {
   const path = new URL(request.url).pathname.replace(/\/$/, "");
-  if (path !== "/api/auth/sign-in/email" && path !== "/api/auth/sign-out") {
+  const challenge = path === "/api/auth/two-factor/verify-totp" || path === "/api/auth/two-factor/verify-backup-code";
+  if (path !== "/api/auth/sign-in/email" && path !== "/api/auth/sign-out" && !challenge) {
     return new Response(null, { status: 404 });
   }
 
@@ -33,6 +34,35 @@ export async function POST(request: Request) {
     headers.delete("content-length");
     headers.delete("content-type");
     return getAuth().handler(new Request(request.url, { method: "POST", headers }));
+  }
+  if (challenge) {
+    const code = z.strictObject({ code: path.endsWith("/verify-totp") ? z.string().regex(/^\d{6}$/) : z.string().regex(/^[a-zA-Z0-9-]{6,40}$/) }).safeParse(body);
+    if (!code.success) return Response.json({ message: "Invalid verification code" }, { status: 400 });
+    const header = process.env.AUTH_TRUSTED_IP_HEADER;
+    const address = header && request.headers.get(header)?.trim();
+    if (header && (!address || !isIP(address))) return new Response(null, { status: 400 });
+    const limited = await rateLimit("mfa-challenge", address || "unattributed", address ? 24 : 120);
+    if (limited) return limited;
+    try {
+      const headers = new Headers(request.headers);
+      headers.delete("content-length");
+      const auth = getAuth();
+      const session = await auth.api.getSession({ headers, query: { disableCookieCache: true } });
+      if (session) return Response.json({ message: "Sign out before attempting a login challenge" }, { status: 409 });
+      const response = await auth.handler(new Request(request.url, {
+        method: "POST", headers, body: JSON.stringify(code.data),
+      }));
+      if (!response.ok) {
+        if (!(await rateLimit("mfa-failure-audit", "anonymous", 24))) {
+          await audit({ actorId: null, action: "mfa.challenge.failure", resource: "authentication", resourceId: "mfa", outcome: "denied" });
+        }
+        return Response.json({ message: "Verification failed. Check your code or sign in again." }, { status: 401 });
+      }
+      await audit({ actorId: null, action: "mfa.challenge.success", resource: "authentication", resourceId: "mfa" });
+      return safeAuthResponse(response, { success: true });
+    } catch {
+      return Response.json({ message: "Verification is unavailable" }, { status: 503 });
+    }
   }
   const parsed = login.safeParse(body);
   if (!parsed.success) return Response.json({ message: "Invalid credentials" }, { status: 400 });
@@ -66,7 +96,13 @@ export async function POST(request: Request) {
     return response;
   }
 
-  const safeHeaders = new Headers({ "Cache-Control": "private, no-store" });
-  for (const cookie of response.headers.getSetCookie()) safeHeaders.append("Set-Cookie", cookie);
-  return Response.json({ success: true }, { headers: safeHeaders });
+  const result: unknown = await response.json().catch(() => null);
+  const requiresMfa = !!result && typeof result === "object" && "twoFactorRedirect" in result && result.twoFactorRedirect === true;
+  return safeAuthResponse(response, requiresMfa ? { twoFactorRedirect: true } : { success: true });
+}
+
+function safeAuthResponse(response: Response, body: object) {
+  const headers = new Headers({ "Cache-Control": "private, no-store" });
+  for (const cookie of response.headers.getSetCookie()) headers.append("Set-Cookie", cookie);
+  return Response.json(body, { headers });
 }

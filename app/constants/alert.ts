@@ -17,6 +17,8 @@ export const alertTypeLabels = {
   overdue_task: "Overdue Task",
   task_assigned: "Task Assigned",
   task_due_soon: "Task Due Soon",
+  prediction_failed: "Prediction Failed",
+  review_completed: "Review Completed",
 };
 
 export const alertStatusColors = {

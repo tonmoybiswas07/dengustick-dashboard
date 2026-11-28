@@ -17,7 +17,7 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    fetch("/api/alerts?status=unread", { signal: controller.signal })
+    fetch("/api/alerts?status=unread&inbox=1", { signal: controller.signal })
       .then(async (result) => {
         if (!result.ok) throw new Error();
         setAlerts((await result.json()).data);

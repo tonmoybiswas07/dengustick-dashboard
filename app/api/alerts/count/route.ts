@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { authorizeAPI } from "@/lib/api-auth";
 import { alertsCollection } from "@/lib/collections";
+import { getInboxFilter } from "@/lib/notification-preferences";
 import { getAlertFilter } from "@/lib/alert-access";
 
 export async function GET() {
@@ -23,7 +24,7 @@ export async function GET() {
     }
 
     const count = await alertsCollection.countDocuments({
-      ...filter,
+      ...await getInboxFilter(session.user.id, filter),
       status: "active",
       readBy: {
         $ne: session.user.id,

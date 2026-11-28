@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ManagedAvatar } from "@/components/dashboard/account/ManagedAvatar";
 import { profileAvatars } from "@/lib/profile-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,6 +37,7 @@ export default async function ProfilePage() {
           <ManagedAvatar available={!!managed} />
         </CardContent>
       </Card>
+      <Link href="/settings#two-factor" className="text-sm text-primary underline">Manage two-factor authentication</Link>
       <ProfileForms name={user.name} image={image.success ? image.data : null} />
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ActivityHistory from "@/components/dashboard/ActivityHistory";
 
 import {
   BellRing,
@@ -162,6 +163,7 @@ export default function AlertCard({
             </div>
           </div>
         </div>
+        <ActivityHistory kind="alert" id={alert._id} />
       </CardContent>
     </Card>
   );

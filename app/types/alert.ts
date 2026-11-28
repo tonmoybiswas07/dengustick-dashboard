@@ -2,7 +2,9 @@ export type AlertType =
   | "positive_detection"
   | "overdue_task"
   | "task_assigned"
-  | "task_due_soon";
+  | "task_due_soon"
+  | "prediction_failed"
+  | "review_completed";
 
 export type AlertSeverity =
   | "low"

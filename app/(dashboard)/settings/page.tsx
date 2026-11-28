@@ -1,3 +1,4 @@
+import { TwoFactorSettings } from "@/components/dashboard/account/TwoFactorSettings";
 import { predictionConfigured } from "@/lib/inspection-predictions";
 import { ImageCleanupButton } from "@/components/dashboard/account/ImageCleanupButton";
 import { getImageStorage } from "@/lib/cloudinary-images";
@@ -19,6 +20,7 @@ export default async function SettingsPage() {
       <h1 className="text-3xl font-bold">Settings</h1>
       <Link href="/profile" className="text-sm text-primary underline">Manage profile and password</Link>
       <SettingsForms personal={personal} system={system} />
+      <TwoFactorSettings enabled={"twoFactorEnabled" in user && user.twoFactorEnabled === true} />
       {system && (
         <Card>
           <CardHeader><CardTitle>System information</CardTitle></CardHeader>

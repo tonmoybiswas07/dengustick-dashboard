@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { ObjectId } from "mongodb";
+import { createAlert } from "@/lib/alert-service";
 import { audit } from "@/lib/audit";
 import client from "@/lib/db";
 import { hasPermission } from "@/lib/permissions";
@@ -96,6 +97,12 @@ export async function processPrediction(services: NonNullable<Awaited<ReturnType
       if (!result.matchedCount) return "lease_lost";
       await audit({ actorId: job.requestedBy, action: "inspection.prediction.failed", resource: "inspection",
         resourceId: inspection._id.toHexString(), regionId: inspection.regionId }, session);
+      await createAlert({
+        type: "prediction_failed", sourceType: "inspection", sourceId: inspection._id.toHexString(),
+        assignedTo: job.requestedBy, regionId: inspection.regionId, severity: "medium",
+        title: "AI prediction failed", message: "The prediction could not be completed. Check AI Review for current status.",
+        location: { district: inspection.location.district, area: inspection.location.area },
+      }, session);
       return "failed";
     }));
   }

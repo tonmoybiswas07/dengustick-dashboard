@@ -49,6 +49,7 @@ const indexes = {
   user: [[{ email: 1 }, { unique: true }], [{ regionId: 1, role: 1, banned: 1 }], [{ regionId: 1, banned: 1 }], [{ role: 1, name: 1, _id: 1 }], [{ regionId: 1, role: 1, name: 1, _id: 1 }], [{ createdAt: -1, _id: -1 }]],
   session: [[{ token: 1 }, { unique: true }], [{ userId: 1 }], [{ userId: 1, expiresAt: 1 }]],
   account: [[{ userId: 1 }], [{ userId: 1, providerId: 1 }]],
+  twoFactor: [[{ userId: 1 }, { unique: true }]],
   verification: [[{ identifier: 1 }]],
   audit_logs: [[{ resource: 1, resourceId: 1, timestamp: -1 }],[{ timestamp: -1, _id: -1 }], [{ action: 1, timestamp: -1, _id: -1 }], [{ actorId: 1, timestamp: -1, _id: -1 }]],
   request_limits: [[{ expiresAt: 1 }, { expireAfterSeconds: 0 }]],

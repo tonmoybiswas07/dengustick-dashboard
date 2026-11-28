@@ -1,6 +1,19 @@
-# DengueVision surveillance dashboard
+# DengueStick surveillance dashboard
 
-DengueVision manages mosquito larvae inspections, manual verification, field tasks, alerts, surveillance reports, and model evaluation. It uses the root Next.js `app/` directory.
+DengueStick manages mosquito larvae inspections, manual verification, field tasks, alerts, surveillance reports, and model evaluation. It uses the root Next.js `app/` directory.
+
+## Architecture and role boundaries
+
+The Next.js App Router serves the dashboard and its API. Better Auth manages credentials, sessions and two-factor state. MongoDB stores application records and transactional changes. Leaflet renders scoped inspections in the browser. Server-only adapters handle managed evidence, inference and recovery delivery.
+
+| Role | Data access |
+| --- | --- |
+| Administrator | Global dashboard and user, region, system settings and audit administration. |
+| Supervisor and health authority | Active-region data and operations or review capabilities granted by the corresponding role. |
+| Field worker | Own inspections, assigned tasks and authorized alerts in the active region. |
+| Researcher | Active-region aggregates, model evaluation and eligible own reports. |
+
+The permission definitions in `lib/permissions.ts` govern individual actions. MongoDB collections include `user`, `account`, `session`, `verification`, `twoFactor`, `regions`, `inspections`, `inspection_images`, `field_tasks`, `alerts`, `reports`, `report_schedules`, `settings`, `profile_avatars`, `audit_logs` and `request_limits`.
 
 ## Local setup
 
@@ -22,6 +35,8 @@ Inject production secrets through the hosting environment. For a local productio
 | `MONGODB_TEST_URI` | Optional. Export it when running the opt-in integration test against a dedicated local replica set. |
 | `INFERENCE_API_URL` | Optional. Server-configured HTTPS endpoint for a future FastAPI service. |
 | `INFERENCE_API_TOKEN` | Required if the inference endpoint is configured. |
+| `RESEND_API_KEY` | Optional. Enables recovery delivery when an eligible sender and HTTPS origin are configured. |
+| `RECOVERY_EMAIL_FROM` | Email address on the verified Resend sender domain. |
 
 Accounts are provisioned by administrators through the Administration module. Bootstrap the first administrator through the deployment's database provisioning process. The dashboard protects existing administrators from changes through account administration.
 
@@ -108,7 +123,7 @@ npm run build
 - Verify alert deduplication, unread counts, report totals, CSV safety, PDF output, and audit filtering against staging data. Check date boundaries in Asia/Dhaka.
 - Check desktop and mobile layouts, both themes, Leaflet tiles, avatars, and existing HTTPS image references under the production security headers.
 
-The CSP blocks inline JavaScript event-handler attributes. It retains inline script elements for Next.js partial prerendering and inline styles for the theme, charts, and maps. A strict nonce-based script policy requires a separate rendering change. Email notifications, MFA, and live inference remain unavailable. Managed image storage requires Cloudinary configuration and staging verification.
+The CSP blocks inline JavaScript event-handler attributes. It retains inline script elements for Next.js partial prerendering and inline styles for the theme, charts, and maps. A strict nonce-based script policy requires a separate rendering change. Live recovery email, TOTP, and inference require staging verification. External alert delivery is deferred. Managed image storage requires Cloudinary configuration and staging verification.
 
 ### Staging checks for security hardening
 
@@ -172,13 +187,25 @@ This checks the staging target, collection and user-index access, and administra
 
 - [x] **A — Managed inspection evidence.** Private Cloudinary uploads, authorization, attachment, and scheduled-by-operator cleanup are implemented. Live provider checks remain.
 - [x] **B — Durable prediction workflow.** MongoDB records queues, attempts, leases, and safe failures. Reviewers can queue, retry, and cancel pending or expired jobs. Workers recheck requester scope, fence stale results, and reuse the same idempotency key when retrying the same evidence. Completed predictions retain their input and remain separate from manual review. AI Review shows original evidence, boxes and optional annotations. A real scheduler and inference contract still need staging validation.
-- [x] **C — Core map, search and history.** The map filters by authorized region, district, date, detection, and status before loading a bounded set. The browser supports clusters, grid-based inspection density and fullscreen. Dashboard search uses Cmd/Ctrl+K and scoped results. Inspection history shows an allowlisted subset of audit events. Remaining work includes viewport bounding-box filtering, continuous heatmaps, search indexing for high-volume data, deep links for modules without detail routes, and histories for tasks and alerts.
-- [x] **D — Core notification, analytics, evaluation and scheduling work.** Added a notification panel, scoped bulk read, transactional task assignment alerts, and due-soon alerts on existing synchronization. Added Dhaka custom dates and equal-duration previous-period comparisons, model version comparisons, and MAE/RMSE for paired counts. Scheduled surveillance reports support daily, weekly and monthly periods. Existing PDF and CSV exports remain available. Category-level preferences, redesigned exports and automated alert polling infrastructure remain.
+- [x] **C — Core map, search and history.** The map filters by authorized region, district, date, detection, and status before loading a bounded set. The browser supports clusters, grid-based inspection density and fullscreen. Dashboard search uses Cmd/Ctrl+K and scoped results. Inspection history shows an allowlisted subset of audit events. The continuous heatmap and debounced viewport filters augment the existing views. Tasks and alerts have bounded record activity. Remaining work includes search indexing, deep links for modules without detail routes, and staging explain plans for viewport workloads.
+- [x] **D — Core notification, analytics, evaluation and scheduling work.** Added a notification panel, scoped bulk read, transactional task assignment alerts, and due-soon alerts on existing synchronization. Added Dhaka custom dates and equal-duration previous-period comparisons, model version comparisons, and MAE/RMSE for paired counts. Scheduled surveillance reports support daily, weekly and monthly periods. The notification inbox respects six category preferences. Report exports use DengueStick branding and research limitations. System notification events and automated deadline synchronization remain deferred.
 - [x] **E — Managed avatars and individual session revocation.** Avatars are size-bounded, normalized WebP records in MongoDB, served only to the active account. Legacy avatar URLs remain the fallback. Individual revocation uses Better Auth and exposes no session token to the browser.
-- [ ] **E — Password recovery, approved email delivery, TOTP and recovery codes.** Public Better Auth endpoints remain restricted. Next work should add delivery configuration and a generic, rate-limited recovery flow, then integrate enrollment, login challenges and recovery codes with the installed Better Auth plugin. Keep each disabled until complete.
-- [x] **F — Targeted UI improvements.** New dialogs use Base UI, search receives initial keyboard focus, map controls have labels, and loading animation respects reduced motion. Full dashboard-wide device, keyboard, contrast and performance checks remain.
+- [x] **E — Password recovery, Resend delivery, TOTP and recovery codes.** Better Auth recovery and 2FA are integrated. Recovery requires configured HTTPS email delivery. Live delivery and authentication checks remain pending.
+- [x] **F — Targeted UI improvements.** New dialogs use Base UI, search receives initial keyboard focus, map controls have labels, and loading animation respects reduced motion. Shared dashboard loading and error states, skip navigation and a text trend summary are implemented. Browser testing across devices, keyboard and assistive technology, measured contrast, and performance profiling remain.
 - [x] **G — Local security, docs and schema preparation.** New endpoints apply scoped authorization or separate worker credentials. Index definitions and example configuration are updated.
 - [ ] **G — Staging and deployment validation.** Run the standard build on the release host. Once approved, apply staging indexes, prove worker idempotency and access isolation against live dependencies, and run the staging authentication and browser suites.
+
+### Account recovery and authenticator setup
+
+Password recovery requires `RESEND_API_KEY`, `RECOVERY_EMAIL_FROM` on a verified Resend sender domain, and an HTTPS `BETTER_AUTH_URL` matching the exact application origin. Inject these values at deployment. Disable email click tracking for the sender so the reset link goes directly to the application. The email link stores the token in the URL fragment. Better Auth persists a hashed identifier, consumes it once, expires it after 30 minutes, and revokes existing sessions when resetting the password. Requests return the same outcome for known and unknown email addresses. A reset leaves existing TOTP enrollment in effect.
+
+Enrol from **Settings → Two-factor authentication**, enter the current password, scan the QR code or enter the setup key, save the recovery codes, and verify a six-digit code. Sign in again after enrollment or disabling the authenticator. Login accepts a current TOTP code or one recovery code. Regeneration and disabling require the current password and an authenticator code. Better Auth encrypts the TOTP secret and recovery codes using the application secret. Protect `BETTER_AUTH_SECRET` and plan any rotation with a backup and an enrollment recovery procedure. TOTP needs no separate external provider. Clock synchronization is required for verification.
+
+Apply approved staging indexes with a staging-only database user and explicit `MONGODB_DB=DengueStickStagingDB`. The migration now adds a unique `twoFactor.userId` index. If a target already has conflicting indexes or duplicate rows, resolve the conflict under a separately approved plan. The migration does not remove rows or indexes. Use MongoDB replica-set transactions for password reset and dashboard mutations.
+
+The in-app notification settings cover assignments, upcoming deadlines, overdue tasks, verified positive detections, AI prediction failures, and inspection review completion. They change which active unread alerts appear in the inbox and badge. The Alerts page retains its normal access rules and record history. There is currently no system notification event source. Recovery email is independent of inbox preferences. Push and external alert delivery are deferred. Prediction failure alerts deduplicate by inspection and report the first recorded failure.
+
+PDF uses built-in Helvetica. CSV is UTF-8 and is the export to use for names or districts requiring Bangla script. Both formats use the stored snapshot. The map visualizes the density of returned inspection locations and caps responses at 1,500 records. Inspect query plans for regional and bounding-box workloads against approved staging data.
 
 ### Worker and API configuration
 
@@ -188,6 +215,11 @@ This checks the staging target, collection and user-index access, and administra
 | `DELETE /api/ai-review/:id/prediction` | The same scope can cancel pending jobs or processing jobs after their lease expires. |
 | `POST /api/ai-review/worker` | A scheduler sends `Authorization: Bearer <INFERENCE_WORKER_SECRET>`. The worker processes at most one job per invocation and requires healthy inference. |
 | `GET /api/ai-review/:id/annotation` | Applies inspection read permissions and proxies bounded, re-encoded annotation bytes from the configured inference origin. |
+| `POST/PATCH /api/account/recovery` | Requests or completes a Better Auth reset. Same-origin, bounded, rate limited, provider gated. |
+| `POST /api/account/two-factor` | Manages TOTP for the signed-in account with recent credentials. |
+| `POST /api/auth/two-factor/verify-totp` or `verify-backup-code` | Allows anonymous Better Auth login challenges. |
+| `GET /api/activity/:kind/:id` | Returns up to 20 task or alert events following record-level checks. |
+| `GET /api/map?viewport=south,west,north,east` | Applies geographic bounds in addition to existing authorization and filters. |
 | `GET /api/search?q=<prefix>` | Bounded, rate-limited results. Returns inspection detail links and module links for other records. |
 | `POST /api/alerts/read` | Marks at most ten accessible alert IDs as read for the current account. |
 | `GET/POST/PATCH /api/reports/schedules` | View, create, pause or resume your schedules within the current report scope. Schedules generate surveillance summaries through the existing report snapshot format. |
@@ -205,6 +237,7 @@ Report periods use Asia/Dhaka calendar boundaries. A delayed run produces a summ
 2. Verify duplicate queue requests, lease takeover, stale result rejection, attempt limits, account or region revocation, and manual review conflicts. Confirm no prediction is written when the provider is unavailable or returns invalid data.
 3. Verify annotation access by role, legacy inspection images, and missing or corrupt provider images. Verify that researchers cannot enter the map API or retrieve private records through search.
 4. Check assignment and deadline notifications, per-user read state, schedule pause and resume, duplicate dispatch, and Dhaka date boundaries with real records. Check model comparisons only with eligible, paired observations.
-5. Verify avatar replacement and deletion, session revocation, responsive and keyboard behavior, and real export files. Follow the separate approved staging authentication procedure.
+5. After explicit approval, verify HTTPS recovery delivery, token expiration and replay, session revocation, concurrent MFA enrollment, invalid and reused recovery codes, regeneration, disabling, and TOTP clock skew.
+6. Verify avatar replacement and deletion, session revocation, responsive and keyboard behavior, and real export files. Follow the separate approved staging authentication procedure.
 
 Verified larvae observations are surveillance records. Manual checks are reference observations for the evaluation workflow. Neither larvae detections nor model confidence estimate human infection risk.

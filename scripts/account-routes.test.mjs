@@ -5,6 +5,7 @@ import test from "node:test";
 const mocked = new Map(
   Object.entries({
     "server-only": "",
+    "@/lib/recovery-mail": "export const getRecoveryMailer = () => globalThis.accountRecoveryConfigured ? {} : null",
     "@/lib/auth": "export const getAuth = () => globalThis.accountTestAuth",
     "@/lib/session":
       "export const getSession = () => globalThis.accountTestSession",
@@ -39,19 +40,29 @@ let updateBody;
 let passwordBody;
 let authCalls = 0;
 let loginStatus = 200;
+let challengeSession = null;
+let authPayload;
+let recoveryEmail;
+let resetPayload;
 globalThis.accountAudit = [];
 globalThis.accountTestAuth = {
   async handler() {
     authCalls += 1;
     if (loginStatus !== 200) return Response.json({ code: "BANNED_USER", token: "private" }, { status: loginStatus });
     return Response.json(
-      { token: "internal", user: { id: "test" } },
+      authPayload ?? { token: "internal", user: { id: "test" } },
       {
         headers: { "Set-Cookie": "test-session=mock; HttpOnly; Secure" },
       },
     );
   },
   api: {
+    async getSession() { return challengeSession; },
+    async requestPasswordReset({ body }) {
+      recoveryEmail = body.email;
+      throw new Error("mock provider error");
+    },
+    async resetPassword({ body }) { resetPayload = body; },
     async updateUser({ body }) {
       updateBody = body;
     },
@@ -67,6 +78,7 @@ globalThis.accountTestAuth = {
 };
 
 const { POST: authPost } = await import("../app/api/auth/[...all]/route.ts");
+const { POST: requestRecovery, PATCH: resetRecovery } = await import("../app/api/account/recovery/route.ts");
 const { PATCH: updateProfile } = await import("../app/api/account/route.ts");
 const { POST: updatePassword } =
   await import("../app/api/account/password/route.ts");
@@ -96,6 +108,11 @@ test("native administration, registration and account mutation paths never reach
     "sign-up/email",
     "update-user",
     "change-password",
+    "request-password-reset",
+    "reset-password",
+    "two-factor/enable",
+    "two-factor/disable",
+    "two-factor/generate-backup-codes",
   ]) {
     assert.equal(
       (await authPost(request(`/api/auth/${path}`, {}))).status,
@@ -271,4 +288,50 @@ test("regional scopes prevent cross-region inspection access and preserve worker
   }
   assert.equal(getInspectionFilter({ id: "user", role: "researcher", regionId }), null);
   assert.deepEqual(getInspectionFilter({ id: "admin", role: "admin" }), {});
+});
+
+test("MFA login preserves only the challenge flag and cookies", async () => {
+  authPayload = { twoFactorRedirect: true, token: "private" };
+  try {
+    const response = await authPost(request("/api/auth/sign-in/email", { email: "mfa@example.test", password: "mock-password" }));
+    assert.deepEqual(await response.json(), { twoFactorRedirect: true });
+    assert.equal(response.headers.getSetCookie().length, 1);
+  } finally {
+    authPayload = undefined;
+  }
+});
+
+test("MFA challenge rejects management attempts and strips the session payload", async () => {
+  const path = "/api/auth/two-factor/verify-totp";
+  const before = authCalls;
+  challengeSession = { user: { id: "test" } };
+  try {
+    assert.equal((await authPost(request(path, { code: "123456" }))).status, 409);
+    assert.equal(authCalls, before);
+  } finally {
+    challengeSession = null;
+  }
+  assert.equal((await authPost(request(path, { code: "123456", trustDevice: true }))).status, 400);
+  const challenge = await authPost(request(path, { code: "123456" }));
+  assert.deepEqual(await challenge.json(), { success: true });
+  assert.equal(challenge.headers.getSetCookie().length, 1);
+});
+
+test("recovery is disabled by default and hides account/provider outcomes", async () => {
+  const path = "/api/account/recovery";
+  const body = { email: "USER@example.test" };
+  assert.equal((await requestRecovery(request(path, body))).status, 503);
+  globalThis.accountRecoveryConfigured = true;
+  try {
+    const response = await requestRecovery(request(path, body));
+    assert.equal(response.status, 200);
+    assert.equal(recoveryEmail, "user@example.test");
+    assert.doesNotMatch(JSON.stringify(await response.json()), /example|provider/);
+    const token = "mock-token-with-at-least-20-chars";
+    assert.equal((await resetRecovery(request(path, { token, newPassword: "too-short" }, "PATCH"))).status, 400);
+    assert.equal((await resetRecovery(request(path, { token, newPassword: "mock-new-password" }, "PATCH"))).status, 200);
+    assert.deepEqual(resetPayload, { token, newPassword: "mock-new-password" });
+  } finally {
+    globalThis.accountRecoveryConfigured = false;
+  }
 });

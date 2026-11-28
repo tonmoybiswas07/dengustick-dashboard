@@ -2,7 +2,7 @@ import "server-only";
 
 import { MongoServerError, type ClientSession } from "mongodb";
 import { db } from "@/lib/db";
-import { personalSettingsSchema, systemSettingsSchema } from "@/lib/validations/account";
+import { personalSettingsSchema, systemSettingsSchema, type PersonalSettings } from "@/lib/validations/account";
 
 export const settingsCollection = db.collection<{ _id: string; value: Record<string, unknown> }>("settings");
 
@@ -25,7 +25,7 @@ export async function writeSettings(id: string, patch: Record<string, string | b
   }
 }
 
-export async function getPersonalSettings(userId: string) {
+export async function getPersonalSettings(userId: string): Promise<PersonalSettings> {
   const result = personalSettingsSchema.safeParse(
     { ...personalDefaults, ...(await settingsCollection.findOne({ _id: `user:${userId}` }))?.value },
   );

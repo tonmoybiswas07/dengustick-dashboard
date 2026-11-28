@@ -6,6 +6,8 @@ import { authorizeAPI } from "@/lib/api-auth";
 import { alertsCollection } from "@/lib/collections";
 import { getAlertFilter } from "@/lib/alert-access";
 
+import { getInboxFilter } from "@/lib/notification-preferences";
+
 import type { Alert } from "@/app/types/alert";
 
 export async function GET(request: Request) {
@@ -19,9 +21,9 @@ export async function GET(request: Request) {
     if (error) return error;
 
     const user = session.user;
-    const filter = getAlertFilter(user);
+    const scope = getAlertFilter(user);
 
-    if (!filter) {
+    if (!scope) {
       return Response.json(
         { message: "Region access denied" },
         { status: 403 }
@@ -34,7 +36,8 @@ export async function GET(request: Request) {
     if (!parsed.success) {
       return Response.json({ message: "Invalid query parameters" }, { status: 400 });
     }
-    const { page, status, severity } = parsed.data;
+    const { page, status, severity, inbox } = parsed.data;
+    const filter = inbox ? await getInboxFilter(user.id, scope) : scope;
 
     const limit = 10;
 
@@ -45,6 +48,8 @@ export async function GET(request: Request) {
     if (status === "active" || status === "resolved") {
       query.status = status;
     }
+
+    if (inbox) query.status = "active";
 
     if (status === "unread") {
       query.readBy = { $ne: user.id };

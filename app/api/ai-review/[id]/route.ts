@@ -1,3 +1,4 @@
+import { createAlert } from "@/lib/alert-service";
 import { predictionUnlocked } from "@/lib/inspection-prediction-state";
 import client from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -93,7 +94,7 @@ export async function PATCH(
             updatedAt: new Date(),
           },
         },
-        { projection: { regionId: 1 }, session: dbSession },
+        { projection: { regionId: 1, inspectorId: 1, location: 1 }, session: dbSession },
       );
 
       if (!reviewed) {
@@ -107,6 +108,15 @@ export async function PATCH(
       }
 
       await audit({ actorId: session.user.id, action: "inspection.review", resource: "inspection", resourceId: id, regionId: reviewed.regionId, metadata: { decision: data.decision } }, dbSession);
+
+      if (reviewed.inspectorId) {
+        await createAlert({
+          type: "review_completed", sourceType: "inspection", sourceId: id,
+          assignedTo: reviewed.inspectorId, regionId: reviewed.regionId, severity: "low",
+          title: "Inspection review completed", message: "Your inspection has been manually reviewed.",
+          location: { district: reviewed.location.district, area: reviewed.location.area },
+        }, dbSession);
+      }
 
       return Response.json({
         success: true,

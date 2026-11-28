@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
     const parsed = mapQuery.safeParse(Object.fromEntries(new URL(request.url).searchParams));
     if (!parsed.success) return Response.json({ message: "Invalid map filters" }, { status: 400 });
-    const { search, district, region, start, end, detection, status } = parsed.data;
+    const { search, district, region, start, end, detection, status, viewport } = parsed.data;
     if (region && session.user.role !== "admin" && session.user.regionId !== region) {
       return Response.json({ message: "Region access denied" }, { status: 403 });
     }
@@ -41,8 +41,13 @@ export async function GET(request: Request) {
       ...(escaped && { $or: ["inspectionId", "location.area", "location.address", "location.district"].map(
         (field) => ({ [field]: { $regex: escaped, $options: "i" } }),
       ) }),
-      "location.latitude": { $gte: -90, $lte: 90 },
-      "location.longitude": { $gte: -180, $lte: 180 },
+      "location.latitude": { $gte: viewport?.south ?? -90, $lte: viewport?.north ?? 90 },
+      "location.longitude": viewport && viewport.west < viewport.east
+        ? { $gte: viewport.west, $lte: viewport.east } : { $gte: -180, $lte: 180 },
+      ...(viewport && viewport.west > viewport.east && { $and: [{ $or: [
+        { "location.longitude": { $gte: viewport.west } },
+        { "location.longitude": { $lte: viewport.east } },
+      ] }] }),
     };
 
     const [inspections, total, districtNames] = await Promise.all([

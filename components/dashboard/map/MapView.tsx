@@ -33,35 +33,6 @@ function ResizeMap() {
   return null;
 }
 
-function FitBounds({
-  inspections,
-}: {
-  inspections: MapInspection[];
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (inspections.length === 0) {
-      map.setView([23.685, 90.3563], 7);
-      return;
-    }
-
-    const bounds = L.latLngBounds(
-      inspections.map((item) => [
-        item.location.latitude,
-        item.location.longitude,
-      ])
-    );
-
-    map.fitBounds(bounds, {
-      padding: [50, 50],
-      maxZoom: 15,
-    });
-  }, [inspections, map]);
-
-  return null;
-}
-
 function GroupedMarkers({ inspections, density, canViewDetails }: { inspections: MapInspection[]; density: boolean; canViewDetails: boolean }) {
   const map = useMap();
   const [zoom, setZoom] = useState(map.getZoom());
@@ -109,14 +80,97 @@ function GroupedMarkers({ inspections, density, canViewDetails }: { inspections:
   });
 }
 
+function SearchArea({ inspections, viewport, onViewport }: {
+  inspections: MapInspection[];
+  viewport: string;
+  onViewport: (bounds: string) => void;
+}) {
+  const map = useMap();
+  const fittingRef = useRef(false);
+  useEffect(() => {
+    if (viewport) return;
+    fittingRef.current = true;
+    try {
+      if (inspections.length === 0) {
+        map.setView([23.685, 90.3563], 7, { animate: false });
+        return;
+      }
+      const bounds = L.latLngBounds(inspections.map(({ location }) => [location.latitude, location.longitude]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false });
+    } finally {
+      fittingRef.current = false;
+    }
+  }, [inspections, map, viewport]);
+  const publish = () => {
+    if (fittingRef.current) return;
+    const bounds = map.getBounds();
+    const wholeWorld = bounds.getEast() - bounds.getWest() >= 360;
+    onViewport([
+      Math.max(-90, bounds.getSouth()), wholeWorld ? -180 : L.Util.wrapNum(bounds.getWest(), [-180, 180]),
+      Math.min(90, bounds.getNorth()), wholeWorld ? 180 : L.Util.wrapNum(bounds.getEast(), [-180, 180]),
+    ].map((coordinate) => coordinate.toFixed(5)).join(","));
+  };
+  useMapEvents({ dragend: publish, zoomend: publish });
+  return <button type="button" className="absolute left-14 top-3 z-[500] rounded border bg-card p-2 text-sm shadow-sm"
+    onClick={publish}>Search this area</button>;
+}
+
+function InspectionHeatmap({ inspections }: { inspections: MapInspection[] }) {
+  const map = useMap();
+  useEffect(() => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const pane = map.getPane("overlayPane");
+    if (!context || !pane) return;
+    canvas.style.position = "absolute";
+    canvas.style.pointerEvents = "none";
+    canvas.setAttribute("aria-hidden", "true");
+    pane.appendChild(canvas);
+    let frame = 0;
+    const draw = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const { x: width, y: height } = map.getSize();
+        canvas.width = width;
+        canvas.height = height;
+        L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
+        context.globalCompositeOperation = "lighter";
+        const centerLongitude = map.getCenter().lng;
+        for (const { location } of inspections) {
+          const worldOffset = 360 * Math.round((centerLongitude - location.longitude) / 360);
+          const { x, y } = map.latLngToContainerPoint([location.latitude, location.longitude + worldOffset]);
+          const radius = 24;
+          if (x < -radius || y < -radius || x > width + radius || y > height + radius) continue;
+          const glow = context.createRadialGradient(x, y, 0, x, y, radius);
+          glow.addColorStop(0, "rgba(239, 105, 36, 0.42)");
+          glow.addColorStop(0.4, "rgba(20, 184, 166, 0.22)");
+          glow.addColorStop(1, "rgba(20, 184, 166, 0)");
+          context.fillStyle = glow;
+          context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        }
+      });
+    };
+    map.on("move zoom resize", draw);
+    draw();
+    return () => {
+      map.off("move zoom resize", draw);
+      cancelAnimationFrame(frame);
+      canvas.remove();
+    };
+  }, [inspections, map]);
+  return null;
+}
+
 export default function MapView({
   inspections,
   canViewDetails,
-  density,
+  mode, viewport, onViewport,
 }: {
   inspections: MapInspection[];
   canViewDetails: boolean;
-  density: boolean;
+  mode: "markers" | "grid" | "heat";
+  viewport: string;
+  onViewport: (bounds: string) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -157,16 +211,18 @@ export default function MapView({
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <FitBounds inspections={inspections} />
+        <SearchArea inspections={inspections} viewport={viewport} onViewport={onViewport} />
         <ResizeMap />
 
-        <GroupedMarkers inspections={inspections} density={density} canViewDetails={canViewDetails} />
+        {mode === "heat" ? <InspectionHeatmap inspections={inspections} /> :
+          <GroupedMarkers inspections={inspections} density={mode === "grid"} canViewDetails={canViewDetails} />}
       </MapContainer>
 
       <div className="absolute bottom-8 left-3 z-[500] space-y-3 rounded-xl border bg-card p-4 shadow-lg">
-        <h3 className="text-sm font-semibold">{density ? "Inspection density" : "AI prediction and cluster legend"}</h3>
+        <h3 className="text-sm font-semibold">{mode !== "markers" ? "Inspection density" : "AI prediction and cluster legend"}</h3>
 
-        {!density && Object.entries({ ...markerColors, unavailable: "#64748b", cluster: "#0f766e" }).map(([label, color]) => (
+        {mode === "heat" && <p className="max-w-48 text-xs">Brighter areas show more recorded inspection locations.</p>}
+        {mode === "markers" && Object.entries({ ...markerColors, unavailable: "#64748b", cluster: "#0f766e" }).map(([label, color]) => (
           <div key={label} className="flex items-center gap-2">
             <span
               className="size-3 rounded-full"

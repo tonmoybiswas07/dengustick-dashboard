@@ -6,6 +6,8 @@ import autoTable from "jspdf-autotable";
 import { reportTypeLabels } from "@/app/constants/report";
 import type { Report } from "@/app/types/report";
 
+const surveillanceNote = "Larvae observations and model confidence do not estimate human dengue infection risk.";
+
 function escapeCSV(value: string | number) {
   let text = String(value);
 
@@ -21,7 +23,7 @@ function escapeCSV(value: string | number) {
 
 export function generateCSV(report: Omit<Report, "_id">) {
   const rows: (string | number)[][] = [
-    ["DengueVision Surveillance Report"],
+    ["DengueStick Surveillance Report"],
     ["Report ID", report.reportId],
     ["Title", report.title],
     ["Type", reportTypeLabels[report.type]],
@@ -44,7 +46,7 @@ export function generateCSV(report: Omit<Report, "_id">) {
     ...report.snapshot.rows,
     [],
     [
-      "Surveillance statistics do not represent human dengue infection rates.",
+      surveillanceNote,
     ],
   ];
 
@@ -75,7 +77,7 @@ export function generatePDF(report: Omit<Report, "_id">) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(21);
 
-  doc.text("DengueVision", 14, 11);
+  doc.text("DengueStick", 14, 11);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -164,6 +166,8 @@ export function generatePDF(report: Omit<Report, "_id">) {
         ],
 
     theme: "striped",
+    showHead: "everyPage",
+    rowPageBreak: "avoid",
 
     headStyles: {
       fillColor: [13, 148, 136],
@@ -195,7 +199,7 @@ export function generatePDF(report: Omit<Report, "_id">) {
     doc.setTextColor(100, 116, 139);
 
     doc.text(
-      "Surveillance data does not represent human dengue infection rates.",
+      surveillanceNote,
       14,
       pageHeight - 12
     );

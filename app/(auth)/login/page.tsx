@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ScanEye, ShieldCheck, University } from "lucide-react";
 import { redirect } from "next/navigation";
 
@@ -24,7 +25,7 @@ export default async function LoginPage() {
 
           <div>
             <h2 className="text-xl font-bold">
-              DengueVision
+              DengueStick
             </h2>
 
             <p className="text-xs text-slate-400">
@@ -67,8 +68,9 @@ export default async function LoginPage() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center bg-background p-6 md:p-12">
+      <section className="flex flex-col items-center justify-center gap-5 bg-background p-6 md:p-12">
         <LoginForm />
+        <Link href="/forgot-password" className="text-sm text-primary underline">Forgot password?</Link>
       </section>
     </main>
   );
