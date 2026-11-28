@@ -1,10 +1,24 @@
 import "server-only";
 
 export function isTrustedRequest(request: Request) {
-  const expected = new URL(process.env.BETTER_AUTH_URL || request.url).origin;
+  const site = request.headers.get("sec-fetch-site");
+  if (site === "cross-site" || site === "same-site") return false;
+
+  const readOnly = request.method === "GET" || request.method === "HEAD";
+  const target = new URL(request.url).origin;
+  const configured = process.env.BETTER_AUTH_URL;
+  const expected = configured ? URL.parse(configured)?.origin : undefined;
   const origin = request.headers.get("origin");
-  return request.headers.get("sec-fetch-site") !== "cross-site" &&
-    (origin === null || origin === expected);
+  const referer = request.headers.get("referer");
+  const source = origin ?? (referer === null ? null : URL.parse(referer)?.origin);
+
+  if (readOnly) {
+    return source === null || source === target || (expected !== undefined && source === expected);
+  }
+
+  // Mutations trust the configured public origin, never forwarding headers.
+  const mutationOrigin = expected ?? (!configured && process.env.NODE_ENV !== "production" ? target : undefined);
+  return mutationOrigin !== undefined && source === mutationOrigin;
 }
 
 const maxBodyBytes = 64 * 1024;

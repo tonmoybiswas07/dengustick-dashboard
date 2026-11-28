@@ -1,10 +1,13 @@
 "use client";
 
 import InspectionImageUploads from "./InspectionImageUploads";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
+
+import { Combobox } from "@base-ui/react/combobox";
+import { loadDirectory } from "@/lib/directory";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +39,13 @@ interface AddInspectionFormProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   role: string;
-  regionId: string;
   inspection?: InspectionDTO | null;
+}
+
+type RegionOption = { id: string; name: string; code: string; district: string };
+
+function regionLabel(region: RegionOption) {
+  return `${region.name} · ${region.code} · ${region.district}`;
 }
 
 function localDateTime(date: Date) {
@@ -51,7 +59,6 @@ export default function AddInspectionForm({
   onOpenChange,
   onSuccess,
   role,
-  regionId,
   inspection,
 }: AddInspectionFormProps) {
   const [loading, setLoading] = useState(false);
@@ -60,7 +67,6 @@ export default function AddInspectionForm({
   const [savedImages, setSavedImages] = useState(() => (inspection?.images ?? []).filter((image) => image.startsWith("/api/inspection-images/")));
 
   const [form, setForm] = useState({
-    regionId: inspection?.regionId ?? regionId,
     address: inspection?.location.address ?? "",
     district: inspection?.location.district ?? "",
     area: inspection?.location.area ?? "",
@@ -77,6 +83,29 @@ export default function AddInspectionForm({
     ),
   });
 
+  const [regionOptions, setRegionOptions] = useState<RegionOption[]>();
+  const [regionError, setRegionError] = useState("");
+  const [regionAttempt, setRegionAttempt] = useState(0);
+  const [regionChoice, setRegionChoice] = useState(inspection?.regionId ?? "");
+  const isAdmin = role === "admin";
+  const selectedRegion = isAdmin
+    ? regionOptions?.find(({ id }) => id === regionChoice)
+    : regionOptions?.[0];
+  const selectionLocked = loading || uploadsBusy || uploaded.length > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    loadDirectory<RegionOption>("/api/inspections/regions", controller.signal)
+      .then((regions) => {
+        if (!controller.signal.aborted) setRegionOptions(regions);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRegionError("Could not load active regions.");
+      });
+    return () => controller.abort();
+  }, [open, regionAttempt]);
+
   function updateField(key: keyof typeof form, value: string) {
     setForm((previous) => ({
       ...previous,
@@ -87,7 +116,11 @@ export default function AddInspectionForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (uploadsBusy) return;
+    if (uploadsBusy || loading) return;
+    if (!selectedRegion) {
+      toast.error("Select an active region before saving");
+      return;
+    }
 
     if (!form.latitude.trim() || !form.longitude.trim()) {
       toast.error("Location coordinates are required");
@@ -98,7 +131,7 @@ export default function AddInspectionForm({
       setLoading(true);
 
       const payload = {
-        regionId: form.regionId,
+        regionId: selectedRegion.id,
         location: {
           address: form.address,
           district: form.district,
@@ -169,17 +202,64 @@ export default function AddInspectionForm({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="regionId">Region ID</Label>
-              <Input
-                id="regionId"
-                value={form.regionId}
-                readOnly={role !== "admin"}
-                onChange={(e) =>
-                  updateField("regionId", e.target.value)
-                }
-                placeholder="REG-001"
-                required
-              />
+              <Label htmlFor="inspection-region">Region</Label>
+              {regionError ? (
+                <div className="space-y-2">
+                  <p role="alert" className="text-sm text-destructive">{regionError}</p>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setRegionError("");
+                    setRegionAttempt((previous) => previous + 1);
+                  }}>Try again</Button>
+                </div>
+              ) : !regionOptions ? (
+                <p role="status" className="text-sm text-muted-foreground">Loading active regions…</p>
+              ) : regionOptions.length === 0 ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {isAdmin ? "No active regions are available." : "Your assigned region is unavailable."}
+                </p>
+              ) : isAdmin ? (
+                <>
+                  <Combobox.Root items={regionOptions} value={selectedRegion ?? null}
+                    itemToStringLabel={regionLabel} itemToStringValue={(region) => region.id}
+                    disabled={selectionLocked}
+                    onValueChange={(region) => setRegionChoice(region?.id ?? "")}>
+                    <Combobox.InputGroup className="relative">
+                      <Combobox.Input id="inspection-region" render={<Input className="pr-9" />}
+                        placeholder="Search by name, code, or district" />
+                      <Combobox.Trigger type="button" aria-label="Show active regions"
+                        className="absolute inset-y-0 right-0 grid w-8 place-items-center rounded-r-lg text-muted-foreground">
+                        <ChevronDown className="size-4" aria-hidden="true" />
+                      </Combobox.Trigger>
+                    </Combobox.InputGroup>
+                    <Combobox.Portal>
+                      <Combobox.Positioner sideOffset={4} className="isolate z-[60] w-(--anchor-width)">
+                        <Combobox.Popup className="max-h-[min(16rem,var(--available-height))] overflow-auto rounded-lg border bg-popover p-1 text-sm text-popover-foreground shadow-md">
+                          <Combobox.Empty className="px-2 py-2 text-muted-foreground">No matching active regions.</Combobox.Empty>
+                          <Combobox.List>
+                            {(region: RegionOption) => (
+                              <Combobox.Item key={region.id} value={region} className="flex cursor-default items-start justify-between gap-2 rounded-md px-2 py-2 data-highlighted:bg-accent data-highlighted:text-accent-foreground">
+                                <span className="min-w-0 wrap-break-word">
+                                  <span className="block font-medium">{region.name}</span>
+                                  <span className="block text-xs">{region.code} · {region.district}</span>
+                                </span>
+                                <Combobox.ItemIndicator><Check className="size-4" aria-hidden="true" /></Combobox.ItemIndicator>
+                              </Combobox.Item>
+                            )}
+                          </Combobox.List>
+                        </Combobox.Popup>
+                      </Combobox.Positioner>
+                    </Combobox.Portal>
+                  </Combobox.Root>
+                  {inspection && regionChoice === inspection.regionId && !selectedRegion && (
+                    <p role="status" className="text-sm text-muted-foreground">Choose an active region for this inspection.</p>
+                  )}
+                  {uploaded.length > 0 && (
+                    <p className="text-xs text-muted-foreground">Remove new uploads before changing region.</p>
+                  )}
+                </>
+              ) : (
+                <Input id="inspection-region" readOnly value={selectedRegion ? regionLabel(selectedRegion) : ""} />
+              )}
             </div>
 
             <div className="space-y-2">
@@ -292,7 +372,7 @@ export default function AddInspectionForm({
             />
           </div>
 
-          <InspectionImageUploads region={form.regionId} saved={[...savedImages, ...form.images.split("\n").filter((value) => value.trim())]}
+          <InspectionImageUploads region={selectedRegion?.id ?? ""} saved={[...savedImages, ...form.images.split("\n").filter((value) => value.trim())]}
             onChange={setUploaded} onBusyChange={setUploadsBusy} />
           {savedImages.map((url, index) => (
             <div key={url} className="flex items-center justify-between gap-2">
@@ -337,7 +417,7 @@ export default function AddInspectionForm({
               Cancel
             </Button>
 
-            <Button type="submit" disabled={loading || uploadsBusy}>
+            <Button type="submit" disabled={loading || uploadsBusy || !selectedRegion}>
               {loading && (
                 <Loader2 className="size-4 motion-safe:animate-spin" />
               )}

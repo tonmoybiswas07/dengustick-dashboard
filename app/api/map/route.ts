@@ -1,13 +1,27 @@
 import { mapQuery } from "@/lib/validations/map";
 import { connection } from "next/server";
+import { MongoServerError } from "mongodb";
 import { authorizeAPI } from "@/lib/api-auth";
 import { inspectionsCollection } from "@/lib/collections";
 import { getInspectionFilter } from "@/lib/inspection-access";
 
+const rowLimit = 1500;
+const queryTimeout = { maxTimeMS: 2500 };
+
+function logQueryFailure(operation: string, error: unknown) {
+  console.error("api/map query failed", {
+    operation,
+    type: error instanceof Error ? error.name : "UnknownError",
+    code: error instanceof MongoServerError && typeof error.code === "number" ? error.code : undefined,
+  });
+}
+
 export async function GET(request: Request) {
   await connection();
 
+  let operation = "authorization";
   try {
+    if (request.signal.aborted) return new Response(null, { status: 499 });
     const { session, error } = await authorizeAPI("map:view", request);
 
     if (error) return error;
@@ -22,7 +36,14 @@ export async function GET(request: Request) {
     }
 
     const parsed = mapQuery.safeParse(Object.fromEntries(new URL(request.url).searchParams));
-    if (!parsed.success) return Response.json({ message: "Invalid map filters" }, { status: 400 });
+    if (!parsed.success) {
+      const field = parsed.error.issues[0]?.path[0];
+      const message = field === "viewport" ? "Invalid map area. Clear the map area and try again."
+        : field === "start" || field === "end" ? "Check the inspection date range."
+        : field === "district" ? "Enter a valid district."
+        : "Check your map filters and try again.";
+      return Response.json({ message }, { status: 400 });
+    }
     const { search, district, region, start, end, detection, status, viewport } = parsed.data;
     if (region && session.user.role !== "admin" && session.user.regionId !== region) {
       return Response.json({ message: "Region access denied" }, { status: 403 });
@@ -50,7 +71,9 @@ export async function GET(request: Request) {
       ] }] }),
     };
 
-    const [inspections, total, districtNames] = await Promise.all([
+    if (request.signal.aborted) return new Response(null, { status: 499 });
+    operation = "inspection records";
+    const [rows, districtNames] = await Promise.all([
       inspectionsCollection
         .find(query)
         .project({
@@ -66,12 +89,23 @@ export async function GET(request: Request) {
           inspectedAt: 1,
         })
         .sort({ inspectedAt: -1, _id: -1 })
-        .maxTimeMS(2500)
-        .limit(1500)
+        .maxTimeMS(queryTimeout.maxTimeMS)
+        .limit(rowLimit + 1)
         .toArray(),
-      inspectionsCollection.countDocuments(query, { maxTimeMS: 2500 }),
-      inspectionsCollection.distinct("location.district", filter, { maxTimeMS: 2500 }),
+      inspectionsCollection.distinct("location.district", filter, queryTimeout).catch((error: unknown) => {
+        if (!request.signal.aborted) logQueryFailure("district options", error);
+        return null;
+      }),
     ]);
+
+    if (request.signal.aborted) return new Response(null, { status: 499 });
+    const truncated = rows.length > rowLimit;
+    const inspections = rows.slice(0, rowLimit);
+    const total = truncated ? await inspectionsCollection.countDocuments(query, queryTimeout).catch((error: unknown) => {
+      if (!request.signal.aborted) logQueryFailure("inspection count", error);
+      return null;
+    }) : inspections.length;
+    if (request.signal.aborted) return new Response(null, { status: 499 });
 
     return Response.json({
       success: true,
@@ -80,15 +114,17 @@ export async function GET(request: Request) {
         _id: inspection._id.toString(),
       })),
       total,
-      districts: districtNames.filter((name): name is string => typeof name === "string").sort(),
-      truncated: total > inspections.length,
+      districts: districtNames?.filter((name): name is string => typeof name === "string").sort() ?? null,
+      truncated,
     });
   } catch (error) {
-    console.error("api/map request failed", error instanceof Error ? error.name : "UnknownError");
-
-    return Response.json(
-      { message: "Failed to fetch map inspections" },
-      { status: 500 }
-    );
+    if (request.signal.aborted) return new Response(null, { status: 499 });
+    logQueryFailure(operation, error);
+    const timedOut = error instanceof MongoServerError && error.code === 50;
+    return Response.json({
+      message: timedOut
+        ? "Loading inspection locations took too long. Narrow the map area or date range and try again."
+        : "Inspection locations are temporarily unavailable. Try again.",
+    }, { status: timedOut ? 503 : 500 });
   }
 }

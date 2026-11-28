@@ -17,7 +17,7 @@ The permission definitions in `lib/permissions.ts` govern individual actions. Mo
 
 ## Local setup
 
-Use Node.js 24 and install the locked dependencies with `npm ci`. For a new checkout, copy `.env.example` to `.env.development.local`, fill in the required values, and run `npm run dev`. Use `BETTER_AUTH_URL=http://localhost:3000` and an isolated development replica set. Keep `.env` free of environment-specific values because Next.js loads it in both development and production.
+Use Node.js 24 and install the locked dependencies with `npm ci`. For a new checkout, copy `.env.example` to `.env.development.local`, fill in the required values, and run `npm run dev`. Use `BETTER_AUTH_URL=http://localhost:3000` and an isolated development replica set. Keep `.env` free of environment-specific values because Next.js loads it in both development and production. Use the same scheme, host, and port in the browser and `BETTER_AUTH_URL` for sign-in and edits. For example, when starting on port 3001 via `127.0.0.1`, set the development origin to `http://127.0.0.1:3001` and restart the server. An exported variable takes precedence over `.env.development.local`, followed by `.env.local`, `.env.development`, and `.env`.
 
 Generate a distinct Better Auth secret for each environment with `openssl rand -hex 32`. Save the output directly in the environment's secret store or ignored local configuration. Keep an existing deployment secret when moving configuration so active sessions remain valid.
 

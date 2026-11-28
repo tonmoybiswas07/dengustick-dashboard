@@ -30,12 +30,10 @@ import {
 
 interface InspectionManagerProps {
   role: string;
-  regionId: string;
 }
 
 export default function InspectionManager({
   role,
-  regionId,
 }: InspectionManagerProps) {
   const [inspections, setInspections] = useState<InspectionDTO[]>([]);
   const [stats, setStats] = useState({
@@ -241,7 +239,6 @@ export default function InspectionManager({
           onOpenChange={setFormOpen}
           onSuccess={refreshData}
           role={role}
-          regionId={regionId}
           inspection={selected}
         />
       )}

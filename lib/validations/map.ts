@@ -18,4 +18,4 @@ export const mapQuery = z.object({
   end: z.iso.date().optional(),
   detection: z.enum(["positive", "negative", "inconclusive"]).optional(),
   status: z.enum(["pending", "under_review", "verified", "rejected"]).optional(),
-}).refine(({ start, end }) => !start || !end || start <= end);
+}).refine(({ start, end }) => !start || !end || start <= end, { path: ["end"] });

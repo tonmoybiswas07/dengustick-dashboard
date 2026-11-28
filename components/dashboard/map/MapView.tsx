@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import L from "leaflet";
 
@@ -17,6 +17,9 @@ import "leaflet/dist/leaflet.css";
 
 import type { MapInspection } from "@/app/types/map";
 
+const initialCenter: L.LatLngTuple = [23.685, 90.3563];
+const initialZoom = 7;
+
 const markerColors = {
   positive: "#ef4444",
   negative: "#10b981",
@@ -26,9 +29,26 @@ const markerColors = {
 function ResizeMap() {
   const map = useMap();
   useEffect(() => {
-    const observer = new ResizeObserver(() => map.invalidateSize({ pan: false }));
-    observer.observe(map.getContainer());
-    return () => observer.disconnect();
+    const element = map.getContainer();
+    let frame = 0;
+    function scheduleResize() {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (element.clientWidth > 0 && element.clientHeight > 0) {
+          map.invalidateSize({ pan: false, debounceMoveend: true });
+        }
+      });
+    }
+
+    const observer = new ResizeObserver(scheduleResize);
+    observer.observe(element);
+    document.addEventListener("fullscreenchange", scheduleResize);
+    scheduleResize();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      document.removeEventListener("fullscreenchange", scheduleResize);
+    };
   }, [map]);
   return null;
 }
@@ -88,13 +108,9 @@ function SearchArea({ inspections, viewport, onViewport }: {
   const map = useMap();
   const fittingRef = useRef(false);
   useEffect(() => {
-    if (viewport) return;
+    if (viewport || inspections.length === 0) return;
     fittingRef.current = true;
     try {
-      if (inspections.length === 0) {
-        map.setView([23.685, 90.3563], 7, { animate: false });
-        return;
-      }
       const bounds = L.latLngBounds(inspections.map(({ location }) => [location.latitude, location.longitude]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false });
     } finally {
@@ -105,10 +121,12 @@ function SearchArea({ inspections, viewport, onViewport }: {
     if (fittingRef.current) return;
     const bounds = map.getBounds();
     const wholeWorld = bounds.getEast() - bounds.getWest() >= 360;
-    onViewport([
+    const [south, west, north, east] = [
       Math.max(-90, bounds.getSouth()), wholeWorld ? -180 : L.Util.wrapNum(bounds.getWest(), [-180, 180]),
       Math.min(90, bounds.getNorth()), wholeWorld ? 180 : L.Util.wrapNum(bounds.getEast(), [-180, 180]),
-    ].map((coordinate) => coordinate.toFixed(5)).join(","));
+    ].map((coordinate) => coordinate.toFixed(5));
+    if (Number(south) >= Number(north) || west === east) return;
+    onViewport([south, west, north, east].join(","));
   };
   useMapEvents({ dragend: publish, zoomend: publish });
   return <button type="button" className="absolute left-14 top-3 z-[500] rounded border bg-card p-2 text-sm shadow-sm"
@@ -180,6 +198,12 @@ export default function MapView({
   const container = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState("");
+  const [tileUnavailable, setTileUnavailable] = useState(false);
+  const [tileAttempt, setTileAttempt] = useState(0);
+  const tileEvents = useMemo(() => ({
+    tileerror: () => setTileUnavailable(true),
+    tileload: () => setTileUnavailable(false),
+  }), []);
 
   useEffect(() => {
     const update = () => setFullscreen(document.fullscreenElement === container.current);
@@ -199,7 +223,7 @@ export default function MapView({
   }
 
   return (
-    <div ref={container} className="surveillance-map relative isolate flex flex-col overflow-hidden rounded-xl border bg-card">
+    <div ref={container} className="surveillance-map relative isolate flex w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-card">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <span className="text-sm font-medium">Inspection locations</span>
         <button type="button" onClick={toggleFullscreen} className="min-h-9 rounded-md border bg-background px-3 text-sm hover:bg-muted">
@@ -207,14 +231,26 @@ export default function MapView({
         </button>
         {fullscreenError && <p role="alert" className="w-full text-sm text-destructive">{fullscreenError}</p>}
       </div>
+      {tileUnavailable && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 text-sm">
+          <p role="status">OpenStreetMap tiles could not load.</p>
+          <button type="button" className="rounded border px-2 py-1" onClick={() => {
+            setTileUnavailable(false);
+            setTileAttempt((attempt) => attempt + 1);
+          }}>Retry tiles</button>
+        </div>
+      )}
       <MapContainer
-        center={[23.685, 90.3563]}
-        zoom={7}
+        center={initialCenter}
+        zoom={initialZoom}
         scrollWheelZoom
         preferCanvas
-        className={fullscreen ? "min-h-0 w-full flex-1" : "h-[min(65dvh,600px)] min-h-72 w-full"}
+        className="surveillance-map-viewport"
       >
         <TileLayer
+          key={tileAttempt}
+          referrerPolicy="strict-origin"
+          eventHandlers={tileEvents}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />

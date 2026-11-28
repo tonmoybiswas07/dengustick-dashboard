@@ -7,7 +7,6 @@ export default async function InspectionsPage() {
   return (
     <InspectionManager
       role={session.user.role ?? ""}
-      regionId={session.user.regionId ?? ""}
     />
   );
 }

@@ -18,7 +18,7 @@ import type { MapInspection } from "@/app/types/map";
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
   loading: () => (
-    <ContentSkeleton label="Loading inspection map…" className="h-[600px]" />
+    <ContentSkeleton label="Loading inspection map…" className="min-h-72" />
   ),
 });
 
@@ -43,7 +43,8 @@ export default function MapManager({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [truncated, setTruncated] = useState(false);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState<number | null>(0);
+  const [districtsUnavailable, setDistrictsUnavailable] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -63,24 +64,39 @@ export default function MapManager({
           signal: controller.signal,
         });
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
-            setInspections([]);
-            setDistricts([]);
-            setLoaded(false);
-          }
-          throw new Error(
-            result.message || "Failed to load map"
-          );
+        if (controller.signal.aborted) return;
+        if (response.status === 401 || response.status === 403) {
+          setInspections([]);
+          setDistricts([]);
+          setDistrictsUnavailable(false);
+          setLoaded(false);
+          setTotal(0);
+          setTruncated(false);
+          throw new Error("You no longer have access to inspection locations.");
         }
 
+        const result = await response.json().catch(() => null);
         if (controller.signal.aborted) return;
+        if (!response.ok) {
+          throw new Error(typeof result?.message === "string" ? result.message : "Failed to load inspection locations.");
+        }
+        if (result?.success !== true || !Array.isArray(result.data)
+          || (result.districts !== null && !Array.isArray(result.districts))
+          || (result.total !== null && !Number.isSafeInteger(result.total)) || typeof result.truncated !== "boolean") {
+          throw new Error("The inspection locations response was invalid.");
+        }
 
         setInspections(result.data);
         setLoaded(true);
-        setDistricts(result.districts);
+        setDistrictsUnavailable(result.districts === null);
+        if (result.districts !== null) {
+          setDistricts(result.districts);
+        } else {
+          const returnedDistricts = (result.data as MapInspection[])
+            .map((inspection) => inspection.location?.district)
+            .filter((name): name is string => typeof name === "string" && name.length > 0);
+          setDistricts((current) => [...new Set([...current, ...returnedDistricts])].sort());
+        }
         setTruncated(result.truncated);
         setTotal(result.total);
       } catch (error) {
@@ -154,61 +170,45 @@ export default function MapManager({
         {viewport && <Button variant="outline" onClick={() => setViewport("")}>Clear map area</Button>}
       </div>
 
-      {loading && !loaded ? (
-        <ContentSkeleton label="Loading inspection map…" className="h-[600px]" />
-      ) : error && !loaded ? (
-        <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-xl border bg-card">
-          <p className="text-sm text-destructive">
-            {error}
+      {loaded && <MapStats inspections={inspections} />}
+
+      {truncated && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+          {total === null
+            ? `Showing the latest ${inspections.length} mapped inspections. Zoom in or narrow your filters for more detail.`
+            : `Showing the latest ${inspections.length} of ${total} mapped inspections.`}
+        </p>
+      )}
+
+      <MapView
+        inspections={inspections}
+        mode={mode}
+        viewport={viewport}
+        onViewport={setViewport}
+        canViewDetails={hasPermission(role, "inspections:view")}
+      />
+
+      {loading && <p role="status" className="text-sm text-muted-foreground">Loading inspection locations…</p>}
+      {error && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
+          <p role="alert" className="text-sm text-destructive">
+            {error}{loaded && " Previous results are still displayed."}
           </p>
-
-          <Button
-            variant="outline"
-            onClick={() =>
-              setRefreshKey((previous) => previous + 1)
-            }
-          >
-            Try Again
-          </Button>
+          <Button variant="outline" onClick={() => setRefreshKey((previous) => previous + 1)}>Try again</Button>
         </div>
-      ) : (
-        <>
-          {loading && <p role="status" className="text-sm text-muted-foreground">Updating map…</p>}
-          {error && <p role="alert" className="text-sm text-destructive">{error} Previous results are still displayed.</p>}
-          <MapStats inspections={inspections} />
-
-          {truncated && (
-            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-              Showing the latest {inspections.length} of {total}{" "}
-              mapped inspections.
-            </p>
-          )}
-
-          <MapView
-            inspections={inspections}
-            mode={mode}
-            viewport={viewport}
-            onViewport={setViewport}
-            canViewDetails={hasPermission(
-              role,
-              "inspections:view"
-            )}
-          />
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-            <p>
-              Showing {inspections.length} of {total} matching inspections
-            </p>
-
-            <p>Map data © OpenStreetMap contributors</p>
-          </div>
-
-          {inspections.length === 0 && (
-            <p className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
-              No inspection locations match your filters.
-            </p>
-          )}
-        </>
+      )}
+      {districtsUnavailable && !loading && !error && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <p role="status">Some district options may be unavailable.</p>
+          <Button variant="outline" onClick={() => setRefreshKey((previous) => previous + 1)}>Retry district options</Button>
+        </div>
+      )}
+      {loaded && !loading && !error && !truncated && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {inspections.length === 0
+            ? "No inspection locations match your filters."
+            : `Showing ${inspections.length} of ${total} matching inspections.`}
+        </p>
       )}
     </div>
   );

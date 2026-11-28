@@ -243,7 +243,7 @@ test("authenticated oversized bodies produce 413 for declared and streamed paylo
   const streamed = request("/api/account", { name: "x".repeat(65536) }, "PATCH");
   assert.equal((await updateProfile(streamed)).status, 413);
   const declared = new Request("https://dashboard.test/api/auth/sign-in/email", {
-    method: "POST", headers: { "Content-Type": "application/json", "Content-Length": "65537" },
+    method: "POST", headers: { Origin: "https://dashboard.test", "Content-Type": "application/json", "Content-Length": "65537" },
   });
   assert.equal((await authPost(declared)).status, 413);
 });
