@@ -1,13 +1,14 @@
+import { AuthPanel } from "@/components/auth/AuthPanel";
 import Link from "next/link";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 
 export default function UnauthorizedPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+    <AuthPanel>
       <div className="w-full max-w-md space-y-6 text-center">
-        <div className="mx-auto flex size-24 items-center justify-center rounded-full bg-destructive/10">
-          <ShieldAlert className="size-12 text-destructive" />
+        <div className="mx-auto flex size-14 items-center justify-center rounded-lg bg-destructive/10">
+          <ShieldAlert className="size-7 text-destructive" />
         </div>
 
         <div className="space-y-2">
@@ -15,7 +16,7 @@ export default function UnauthorizedPage() {
             ERROR 403
           </p>
 
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl font-semibold tracking-tight">
             Access Denied
           </h1>
 
@@ -31,6 +32,6 @@ export default function UnauthorizedPage() {
           Back to Dashboard
         </Link>
       </div>
-    </div>
+    </AuthPanel>
   );
 }

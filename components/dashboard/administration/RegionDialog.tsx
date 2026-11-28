@@ -262,7 +262,7 @@ export default function RegionDialog({
               disabled={loading}
             >
               {loading ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 motion-safe:animate-spin" />
               ) : (
                 <MapPin className="size-4" />
               )}

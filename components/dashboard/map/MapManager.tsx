@@ -1,8 +1,11 @@
 "use client";
 
+import { ContentSkeleton } from "@/components/dashboard/ContentSkeleton";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { MapPinned, Loader2, RefreshCw } from "lucide-react";
+import { MapPinned, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { hasPermission } from "@/lib/permissions";
@@ -15,9 +18,7 @@ import type { MapInspection } from "@/app/types/map";
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[600px] items-center justify-center rounded-xl border bg-card">
-      <Loader2 className="size-8 motion-safe:animate-spin text-primary" />
-    </div>
+    <ContentSkeleton label="Loading inspection map…" className="h-[600px]" />
   ),
 });
 
@@ -104,17 +105,8 @@ export default function MapManager({
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight md:text-3xl">
-            <MapPinned className="size-7 text-primary" />
-            Geospatial Map
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground">
-            Visualize mosquito breeding sites and surveillance
-            inspection locations.
-          </p>
-        </div>
+        <PageHeader title="Geospatial Map" icon={<MapPinned />}
+          description="Visualize mosquito breeding sites and surveillance inspection locations." />
 
         <Button
           variant="outline"
@@ -125,7 +117,7 @@ export default function MapManager({
         >
           <RefreshCw
             className={`size-4 ${
-              loading ? "animate-spin" : ""
+              loading ? "motion-safe:animate-spin" : ""
             }`}
           />
           Refresh Map
@@ -163,9 +155,7 @@ export default function MapManager({
       </div>
 
       {loading && !loaded ? (
-        <div className="flex h-[600px] items-center justify-center rounded-xl border bg-card">
-          <Loader2 className="size-8 motion-safe:animate-spin text-primary" />
-        </div>
+        <ContentSkeleton label="Loading inspection map…" className="h-[600px]" />
       ) : error && !loaded ? (
         <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-xl border bg-card">
           <p className="text-sm text-destructive">

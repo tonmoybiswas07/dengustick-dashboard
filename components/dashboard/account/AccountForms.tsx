@@ -95,7 +95,7 @@ export function ProfileForms({ name, image }: { name: string; image: string | nu
   );
 }
 
-const selectClass = "ml-2 rounded-md border bg-background px-3 py-2";
+const selectClass = "mt-1 block min-h-10 w-full max-w-xs rounded-md border bg-background px-3 py-2";
 
 const categories = { notifyPositive: "Positive detections", notifyAssignment: "Task assignments", notifyDeadline: "Upcoming deadlines", notifyOverdue: "Overdue tasks", notifyPredictionFailure: "AI processing failures", notifyReview: "Inspection review completion" } as const;
 const categoryKeys = Object.keys(categories) as (keyof typeof categories)[];
@@ -117,8 +117,8 @@ export function SettingsForms({ personal, system }: { personal: PersonalSettings
           <input name="alertNotifications" type="checkbox" defaultChecked={personal.alertNotifications} />
           Show in-app alert notifications
         </label>
-        <fieldset className="space-y-2">
-          <legend className="mb-2 text-sm font-medium">Notification categories</legend>
+        <fieldset className="space-y-2 rounded-lg border p-3">
+          <legend className="px-1 text-sm font-medium">Notification categories</legend>
           {categoryKeys.map((key) => <label key={key} className="flex gap-2 text-sm">
             <input name={key} type="checkbox" defaultChecked={personal[key] !== false} />
             {categories[key]}
@@ -145,7 +145,7 @@ export function SettingsForms({ personal, system }: { personal: PersonalSettings
             <input name="overdueTaskAlerts" type="checkbox" defaultChecked={system.overdueTaskAlerts} />
             Generate alerts for overdue tasks
           </label>
-          <p className="text-sm text-muted-foreground">Email notifications and multi-factor authentication are unavailable.</p>
+          <p className="text-sm text-muted-foreground">External alert delivery is currently unavailable.</p>
         </AccountForm>
       )}
     </>
@@ -160,6 +160,7 @@ function Sessions() {
   const [error, setError] = useState("");
 
   async function load(revoke: boolean) {
+    if (revoke && !window.confirm("Sign out every other session? This device will stay signed in.")) return;
     setBusy(true);
     setError("");
     try {
@@ -178,6 +179,7 @@ function Sessions() {
   }
 
   async function revokeOne(id: string) {
+    if (!window.confirm("Sign out this session?")) return;
     setBusy(true);
     setError("");
     try {

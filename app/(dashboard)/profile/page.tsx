@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import Link from "next/link";
 import { ManagedAvatar } from "@/components/dashboard/account/ManagedAvatar";
 import { profileAvatars } from "@/lib/profile-avatar";
@@ -19,7 +20,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <h1 className="text-3xl font-bold">Profile</h1>
+      <PageHeader title="Profile" description="Manage your personal information, avatar, and password." />
       <Card>
         <CardHeader><CardTitle>{user.name}</CardTitle></CardHeader>
         <CardContent className="space-y-3">

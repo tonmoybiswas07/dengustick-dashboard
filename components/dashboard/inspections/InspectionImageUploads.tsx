@@ -198,17 +198,18 @@ export default function InspectionImageUploads({
         >
           <input
             id="inspection-files"
+            aria-describedby="inspection-upload-help"
             type="file"
             multiple
             disabled={!region}
             accept=".jpg,.jpeg,.png,.webp"
-            className="w-full text-sm"
+            className="w-full min-w-0 text-sm file:mr-2 file:rounded-md file:border file:bg-card file:px-3 file:py-2 file:text-foreground"
             onChange={(event) => {
               add(event.currentTarget.files);
               event.currentTarget.value = "";
             }}
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="inspection-upload-help" className="text-xs text-muted-foreground">
             Drop images here or select files. JPEG, PNG, WebP, up to 4 MiB each.
           </p>
         </div>

@@ -112,17 +112,19 @@ export default function BreedingSiteChart({
                 <Legend />
 
                 <Bar
+                  isAnimationActive={false}
                   dataKey="total"
                   name="Inspections"
-                  fill="#0d9488"
+                  fill="var(--chart-1)"
                   radius={[0, 5, 5, 0]}
                   maxBarSize={20}
                 />
 
                 <Bar
+                  isAnimationActive={false}
                   dataKey="positive"
                   name="Verified Positive"
-                  fill="#f59e0b"
+                  fill="var(--chart-3)"
                   radius={[0, 5, 5, 0]}
                   maxBarSize={20}
                 />

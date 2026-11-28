@@ -21,6 +21,8 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
     const action = submitter?.getAttribute("value");
     if (!action) return;
+    if (action === "disable" && !window.confirm("Disable your authenticator? You will need to sign in again.")) return;
+    if (action === "regenerate" && !window.confirm("Replace your recovery codes? Previous codes will stop working.")) return;
     const fields = new FormData(form);
     setBusy(true);
     setMessage("");

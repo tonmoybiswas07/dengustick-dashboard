@@ -19,9 +19,9 @@ import {
 import type { DetectionDistribution } from "@/app/types/analytics";
 
 const colors: Record<string, string> = {
-  Positive: "#ef4444",
-  Negative: "#10b981",
-  Inconclusive: "#f59e0b",
+  Positive: "var(--chart-4)",
+  Negative: "var(--chart-1)",
+  Inconclusive: "var(--chart-3)",
 };
 
 export default function DetectionDistributionChart({
@@ -55,6 +55,7 @@ export default function DetectionDistributionChart({
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
+                    isAnimationActive={false}
                     data={data.filter(
                       (item) => item.value > 0
                     )}

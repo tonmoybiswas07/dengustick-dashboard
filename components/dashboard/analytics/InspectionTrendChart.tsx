@@ -70,13 +70,13 @@ export default function InspectionTrendChart({
                   >
                     <stop
                       offset="5%"
-                      stopColor="#0d9488"
+                      stopColor="var(--chart-1)"
                       stopOpacity={0.3}
                     />
 
                     <stop
                       offset="95%"
-                      stopColor="#0d9488"
+                      stopColor="var(--chart-1)"
                       stopOpacity={0}
                     />
                   </linearGradient>
@@ -124,28 +124,31 @@ export default function InspectionTrendChart({
                 <Legend />
 
                 <Area
+                  isAnimationActive={false}
                   type="monotone"
                   dataKey="inspections"
                   name="Total Inspections"
-                  stroke="#0d9488"
+                  stroke="var(--chart-1)"
                   strokeWidth={2.5}
                   fill="url(#analyticsInspectionGradient)"
                 />
 
                 <Area
+                  isAnimationActive={false}
                   type="monotone"
                   dataKey="verified"
                   name="Verified"
-                  stroke="#3b82f6"
+                  stroke="var(--chart-2)"
                   strokeWidth={2}
                   fill="transparent"
                 />
 
                 <Area
+                  isAnimationActive={false}
                   type="monotone"
                   dataKey="positive"
                   name="Verified Positive"
-                  stroke="#f59e0b"
+                  stroke="var(--chart-3)"
                   strokeWidth={2}
                   fill="transparent"
                 />

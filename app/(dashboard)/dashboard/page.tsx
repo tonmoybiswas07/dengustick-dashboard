@@ -14,7 +14,6 @@ export default async function DashboardPage() {
     <OverviewManager
       defaultRange={settings.dashboardRange}
       userName={session.user.name}
-      role={session.user.role}
     />
   );
 }

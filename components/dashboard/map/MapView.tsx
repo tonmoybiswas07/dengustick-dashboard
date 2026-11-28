@@ -121,7 +121,17 @@ function InspectionHeatmap({ inspections }: { inspections: MapInspection[] }) {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
     const pane = map.getPane("overlayPane");
-    if (!context || !pane) return;
+    const radius = 24;
+    const stamp = document.createElement("canvas");
+    stamp.width = stamp.height = radius * 2;
+    const brush = stamp.getContext("2d");
+    if (!context || !pane || !brush) return;
+    const glow = brush.createRadialGradient(radius, radius, 0, radius, radius, radius);
+    glow.addColorStop(0, "rgba(239, 105, 36, 0.42)");
+    glow.addColorStop(0.4, "rgba(20, 184, 166, 0.22)");
+    glow.addColorStop(1, "rgba(20, 184, 166, 0)");
+    brush.fillStyle = glow;
+    brush.fillRect(0, 0, radius * 2, radius * 2);
     canvas.style.position = "absolute";
     canvas.style.pointerEvents = "none";
     canvas.setAttribute("aria-hidden", "true");
@@ -131,22 +141,17 @@ function InspectionHeatmap({ inspections }: { inspections: MapInspection[] }) {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const { x: width, y: height } = map.getSize();
-        canvas.width = width;
-        canvas.height = height;
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
+        context.clearRect(0, 0, width, height);
         L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
         context.globalCompositeOperation = "lighter";
         const centerLongitude = map.getCenter().lng;
         for (const { location } of inspections) {
           const worldOffset = 360 * Math.round((centerLongitude - location.longitude) / 360);
           const { x, y } = map.latLngToContainerPoint([location.latitude, location.longitude + worldOffset]);
-          const radius = 24;
           if (x < -radius || y < -radius || x > width + radius || y > height + radius) continue;
-          const glow = context.createRadialGradient(x, y, 0, x, y, radius);
-          glow.addColorStop(0, "rgba(239, 105, 36, 0.42)");
-          glow.addColorStop(0.4, "rgba(20, 184, 166, 0.22)");
-          glow.addColorStop(1, "rgba(20, 184, 166, 0)");
-          context.fillStyle = glow;
-          context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+          context.drawImage(stamp, x - radius, y - radius);
         }
       });
     };
@@ -194,17 +199,20 @@ export default function MapView({
   }
 
   return (
-    <div ref={container} className="relative isolate overflow-hidden rounded-xl border bg-background">
-      <button type="button" onClick={toggleFullscreen} className="absolute right-3 top-3 z-[500] rounded border bg-card p-2 text-sm shadow-sm">
-        {fullscreen ? "Exit fullscreen" : "Fullscreen map"}
-      </button>
-      {fullscreenError && <p role="alert" className="absolute right-3 top-14 z-[500] rounded border bg-card p-2 text-sm">{fullscreenError}</p>}
+    <div ref={container} className="surveillance-map relative isolate flex flex-col overflow-hidden rounded-xl border bg-card">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+        <span className="text-sm font-medium">Inspection locations</span>
+        <button type="button" onClick={toggleFullscreen} className="min-h-9 rounded-md border bg-background px-3 text-sm hover:bg-muted">
+          {fullscreen ? "Exit fullscreen" : "Fullscreen map"}
+        </button>
+        {fullscreenError && <p role="alert" className="w-full text-sm text-destructive">{fullscreenError}</p>}
+      </div>
       <MapContainer
         center={[23.685, 90.3563]}
         zoom={7}
         scrollWheelZoom
         preferCanvas
-        className={fullscreen ? "h-dvh w-full" : "h-[min(65dvh,600px)] min-h-80 w-full"}
+        className={fullscreen ? "min-h-0 w-full flex-1" : "h-[min(65dvh,600px)] min-h-72 w-full"}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -218,10 +226,10 @@ export default function MapView({
           <GroupedMarkers inspections={inspections} density={mode === "grid"} canViewDetails={canViewDetails} />}
       </MapContainer>
 
-      <div className="absolute bottom-8 left-3 z-[500] space-y-3 rounded-xl border bg-card p-4 shadow-lg">
-        <h3 className="text-sm font-semibold">{mode !== "markers" ? "Inspection density" : "AI prediction and cluster legend"}</h3>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t px-3 py-2">
+        <p className="text-xs font-semibold">{mode !== "markers" ? "Inspection density" : "AI prediction and cluster legend"}</p>
 
-        {mode === "heat" && <p className="max-w-48 text-xs">Brighter areas show more recorded inspection locations.</p>}
+        {mode === "heat" && <p className="text-xs text-muted-foreground">Brighter areas show more recorded inspection locations.</p>}
         {mode === "markers" && Object.entries({ ...markerColors, unavailable: "#64748b", cluster: "#0f766e" }).map(([label, color]) => (
           <div key={label} className="flex items-center gap-2">
             <span

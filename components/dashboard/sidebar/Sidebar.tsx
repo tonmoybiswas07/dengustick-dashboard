@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ScanEye, ChevronRight, University } from "lucide-react";
+import { ScanEye, ChevronRight, University, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { hasPermission } from "@/lib/permissions";
@@ -14,6 +15,8 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ role, onNavigate }: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(false);
+  const compact = collapsed && !onNavigate;
   const pathname = usePathname();
 
   const allowedNavigation = navigation
@@ -26,26 +29,24 @@ export default function Sidebar({ role, onNavigate }: SidebarProps) {
     .filter((group) => group.items.length > 0);
 
   return (
-    <aside className="flex h-dvh w-64 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-20 shrink-0 items-center gap-3 border-b border-sidebar-border px-5">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-white">
-          <ScanEye size={26} />
+    <aside className={cn("flex h-dvh flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground", compact ? "w-16" : "w-60")}>
+      <div className="flex h-16 shrink-0 items-center justify-center gap-3 border-b border-sidebar-border px-3">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+          <ScanEye size={20} aria-hidden="true" />
         </div>
 
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-white">
-            DengueVision
-          </h1>
+        <div className={compact ? "sr-only" : "flex-1"}>
+          <p className="text-base font-semibold tracking-tight text-white">DengueStick</p>
           <p className="text-[11px] text-slate-400">
             Surveillance Platform
           </p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-6">
+      <nav aria-label="Dashboard navigation" id={onNavigate ? undefined : "desktop-navigation"} className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-2 py-4">
         {allowedNavigation.map((group) => (
           <div key={group.label}>
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            <p className={compact ? "sr-only" : "mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400"}>
               {group.label}
             </p>
 
@@ -62,21 +63,23 @@ export default function Sidebar({ role, onNavigate }: SidebarProps) {
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
+                    title={compact ? item.title : undefined}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium motion-safe:transition-colors",
+                      compact && "justify-center px-0",
                       isActive
-                        ? "bg-primary text-white"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
                         : "text-slate-400 hover:bg-sidebar-accent hover:text-white"
                     )}
                   >
                     <Icon size={18} className="shrink-0" />
 
-                    <span className="flex-1">
+                    <span className={compact ? "sr-only" : "flex-1"}>
                       {item.title}
                     </span>
 
-                    {isActive && <ChevronRight size={14} />}
+                    {isActive && !compact && <ChevronRight size={14} aria-hidden="true" />}
                   </Link>
                 );
               })}
@@ -85,18 +88,23 @@ export default function Sidebar({ role, onNavigate }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="flex items-center gap-3 border-t border-sidebar-border p-5">
+      {!onNavigate && <button type="button" aria-expanded={!compact} aria-controls="desktop-navigation"
+        onClick={() => setCollapsed(!collapsed)} className="mx-2 mb-2 flex min-h-10 items-center justify-center gap-2 rounded-md text-sm hover:bg-sidebar-accent"
+        aria-label={compact ? "Expand navigation" : "Collapse navigation"}>
+        {compact ? <PanelLeftOpen size={18} aria-hidden="true" /> : <><PanelLeftClose size={18} aria-hidden="true" /> Collapse navigation</>}
+      </button>}
+      {!compact && <div className="flex items-center gap-3 border-t border-sidebar-border p-4">
         <University size={24} className="shrink-0 text-slate-400" />
 
         <div>
           <p className="text-xs font-medium text-slate-200">
             BAUST Research Project
           </p>
-          <p className="mt-1 text-[10px] text-slate-500">
+          <p className="mt-1 text-xs text-slate-400">
             ZRF-26-251C02
           </p>
         </div>
-      </div>
+      </div>}
     </aside>
   );
 }

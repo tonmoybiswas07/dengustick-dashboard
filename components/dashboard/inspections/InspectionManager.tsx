@@ -1,7 +1,10 @@
 "use client";
 
+import { ContentSkeleton } from "@/components/dashboard/ContentSkeleton";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+
 import { useEffect, useState } from "react";
-import { ClipboardList, Plus, Loader2 } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -175,16 +178,8 @@ export default function InspectionManager({
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight md:text-3xl">
-            <ClipboardList className="size-7 text-primary" />
-            Inspections
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground">
-            Manage and monitor field surveillance inspections.
-          </p>
-        </div>
+        <PageHeader title="Inspections" icon={<ClipboardList />}
+          description="Manage and monitor field surveillance inspections." />
 
         {hasPermission(role, "inspections:create") && (
           <Button onClick={handleAdd}>
@@ -215,9 +210,7 @@ export default function InspectionManager({
       />
 
       {loading ? (
-        <div className="flex min-h-64 items-center justify-center rounded-xl border bg-card">
-          <Loader2 className="size-8 animate-spin text-primary" />
-        </div>
+        <ContentSkeleton label="Loading inspections…" className="min-h-64" />
       ) : error ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-xl border bg-card p-6">
           <p className="text-sm text-destructive">

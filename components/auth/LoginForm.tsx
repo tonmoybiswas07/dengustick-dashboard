@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   Eye,
   EyeOff,
   Loader2,
-  ShieldCheck,
   ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,10 +24,12 @@ export default function LoginForm() {
   const [backup, setBackup] = useState(false);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     try {
       const endpoint = challenge ? `two-factor/${backup ? "verify-backup-code" : "verify-totp"}` : "sign-in/email";
@@ -36,7 +38,7 @@ export default function LoginForm() {
         body: JSON.stringify(challenge ? { code } : { email, password }),
       });
       if (!response.ok) {
-        toast.error(challenge ? "Invalid verification code or expired challenge" : "Invalid email or password");
+        setError(challenge ? "Invalid verification code or expired challenge" : "Invalid email or password");
         return;
       }
       if ((await response.json()).twoFactorRedirect === true) {
@@ -45,41 +47,38 @@ export default function LoginForm() {
         return;
       }
 
-      toast.success("Welcome to DengueVision");
+      toast.success("Signed in");
 
       router.replace("/dashboard");
       router.refresh();
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md space-y-8">
-      <div className="space-y-3">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <ShieldCheck size={30} />
-        </div>
-
-        <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back
-        </h1>
-
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">{challenge ? "Verify your sign-in" : "Sign in"}</h1>
         <p className="text-sm text-muted-foreground">
-          Sign in to your DengueVision surveillance dashboard.
+          {challenge ? (backup ? "Enter an unused recovery code." : "Enter the code from your authenticator app.")
+            : "Use your authorized research or public health account."}
         </p>
       </div>
 
-      {challenge ? <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <p role="alert" className="rounded-md border border-destructive/25 bg-destructive/8 p-3 text-sm text-destructive">{error}</p>}
+      {challenge ? <form onSubmit={handleSubmit} aria-busy={loading} className="space-y-4">
         <label className="block">{backup ? "Recovery code" : "Authenticator code"}
-          <Input autoComplete="one-time-code" inputMode={backup ? "text" : "numeric"} value={code} onChange={(event) => setCode(event.target.value)} required maxLength={40} />
+          <Input autoFocus className="mt-1 h-11" autoComplete="one-time-code" inputMode={backup ? "text" : "numeric"} value={code} onChange={(event) => setCode(event.target.value)} required maxLength={40} />
         </label>
+        <div className="grid gap-2 sm:flex sm:flex-wrap">
         <Button disabled={loading} type="submit">{loading ? "Verifying…" : "Verify sign-in"}</Button>
-        <Button variant="outline" type="button" onClick={() => { setBackup(!backup); setCode(""); }}>{backup ? "Use authenticator" : "Use recovery code"}</Button>
-        <Button variant="ghost" type="button" onClick={() => { setChallenge(false); setCode(""); }}>Back to password</Button>
-      </form> : <form onSubmit={handleSubmit} className="space-y-5">
+        <Button variant="outline" type="button" onClick={() => { setBackup(!backup); setCode(""); setError(""); }}>{backup ? "Use authenticator" : "Use recovery code"}</Button>
+        <Button variant="ghost" type="button" onClick={() => { setChallenge(false); setCode(""); setError(""); }}>Back to password</Button>
+        </div>
+      </form> : <form onSubmit={handleSubmit} aria-busy={loading} className="space-y-5">
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium">
             Email address
@@ -120,7 +119,7 @@ export default function LoginForm() {
                 showPassword ? "Hide password" : "Show password"
               }
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded text-muted-foreground"
             >
               {showPassword ? (
                 <EyeOff size={18} />
@@ -138,7 +137,7 @@ export default function LoginForm() {
         >
           {loading ? (
             <>
-              <Loader2 className="animate-spin" />
+              <Loader2 className="motion-safe:animate-spin" />
               Signing in...
             </>
           ) : (
@@ -150,12 +149,7 @@ export default function LoginForm() {
         </Button>
       </form>}
 
-      <div className="rounded-xl border bg-muted/40 p-4">
-        <p className="text-center text-xs text-muted-foreground">
-          This platform is restricted to authorized research
-          and public health personnel.
-        </p>
-      </div>
+      {!challenge && <Link href="/forgot-password" className="inline-block text-sm text-primary underline underline-offset-4">Forgot password?</Link>}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
+
 import { useEffect, useState } from "react";
 
 import {
@@ -31,21 +33,11 @@ import type {
 interface OverviewManagerProps {
   userName: string;
   defaultRange: string;
-  role?: string | null;
 }
-
-const roleLabels: Record<string, string> = {
-  admin: "Administrator",
-  health_authority: "Health Authority",
-  supervisor: "Supervisor",
-  field_worker: "Field Worker",
-  researcher: "Researcher",
-};
 
 export default function OverviewManager({
   userName,
   defaultRange,
-  role,
 }: OverviewManagerProps) {
   const [data, setData] =
     useState<DashboardData | null>(null);
@@ -127,17 +119,8 @@ export default function OverviewManager({
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight md:text-3xl">
-            <LayoutDashboard className="size-8 text-primary" />
-            Surveillance Overview
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground">
-            Welcome back, {firstName}. Monitor mosquito
-            larvae surveillance activities.
-          </p>
-        </div>
+        <PageHeader title="Surveillance Overview" icon={<LayoutDashboard />}
+          description={`Welcome back, ${firstName}. Monitor mosquito larvae surveillance activities.`} />
 
         <DashboardFilters
           range={range}
@@ -145,32 +128,6 @@ export default function OverviewManager({
           onRangeChange={changeRange}
           onRefresh={refreshDashboard}
         />
-      </div>
-
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 md:p-7">
-        <div className="absolute -right-10 -top-16 size-56 rounded-full bg-primary/5" />
-
-        <div className="relative">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-            DengueVision Surveillance System
-          </p>
-
-          <h2 className="mt-3 text-xl font-bold md:text-2xl">
-            AI-Powered Mosquito Larvae Surveillance
-          </h2>
-
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Track field inspections, manually verified
-            detections and operational alerts from a
-            centralized surveillance dashboard.
-          </p>
-
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1.5 text-xs font-medium">
-            <span className="size-2 rounded-full bg-primary" />
-
-            {roleLabels[role ?? ""] ?? "User"}
-          </div>
-        </div>
       </div>
 
       {loading ? (

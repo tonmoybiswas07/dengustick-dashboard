@@ -1,11 +1,13 @@
 "use client";
 
+import { ContentSkeleton } from "@/components/dashboard/ContentSkeleton";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+
 import { useEffect, useState } from "react";
 
 import {
   BrainCircuit,
   RefreshCw,
-  Loader2,
   Info,
   Database,
   CircleAlert,
@@ -108,17 +110,8 @@ export default function ModelEvaluationManager() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight md:text-3xl">
-            <BrainCircuit className="size-8 text-primary" />
-            AI Model Evaluation
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground">
-            Monitor mosquito larvae detection performance
-            against manually verified results.
-          </p>
-        </div>
+        <PageHeader title="AI Model Evaluation" icon={<BrainCircuit />}
+          description="Monitor mosquito larvae detection performance against manually verified results." />
 
         <Button
           variant="outline"
@@ -127,7 +120,7 @@ export default function ModelEvaluationManager() {
         >
           <RefreshCw
             className={`size-4 ${
-              loading ? "animate-spin" : ""
+              loading ? "motion-safe:animate-spin" : ""
             }`}
           />
 
@@ -178,13 +171,7 @@ export default function ModelEvaluationManager() {
       </div>
 
       {loading ? (
-        <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-xl border bg-card">
-          <Loader2 className="size-9 animate-spin text-primary" />
-
-          <p className="text-sm text-muted-foreground">
-            Calculating model performance...
-          </p>
-        </div>
+        <ContentSkeleton label="Loading model evaluation…" className="min-h-[400px]" />
       ) : error ? (
         <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-xl border bg-card">
           <CircleAlert className="size-10 text-destructive" />

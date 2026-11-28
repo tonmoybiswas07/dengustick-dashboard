@@ -6,10 +6,10 @@ export const alertSeverities = [
 ] as const;
 
 export const severityColors = {
-  low: "bg-slate-500/10 text-slate-500",
-  medium: "bg-blue-500/10 text-blue-600",
-  high: "bg-amber-500/10 text-amber-600",
-  critical: "bg-red-500/10 text-red-600",
+  low: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
+  medium: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  high: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
+  critical: "bg-red-500/10 text-red-700 dark:text-red-300",
 };
 
 export const alertTypeLabels = {
@@ -22,6 +22,6 @@ export const alertTypeLabels = {
 };
 
 export const alertStatusColors = {
-  active: "bg-amber-500/10 text-amber-600",
-  resolved: "bg-emerald-500/10 text-emerald-600",
+  active: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
+  resolved: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
 };

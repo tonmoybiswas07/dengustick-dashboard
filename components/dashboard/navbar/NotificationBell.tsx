@@ -20,27 +20,40 @@ export default function NotificationBell() {
     fetch("/api/alerts?status=unread&inbox=1", { signal: controller.signal })
       .then(async (result) => {
         if (!result.ok) throw new Error();
-        setAlerts((await result.json()).data);
+        const { data } = await result.json();
+        if (!controller.signal.aborted) setAlerts(data);
       })
       .catch(() => { if (!controller.signal.aborted) setError("Could not load notifications."); });
     return () => controller.abort();
   }, [open]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    async function refresh() {
-      if (document.visibilityState === "hidden") return;
+    const lifetime = new AbortController();
+    let pending: AbortController | undefined;
+    async function refresh(event?: Event) {
+      if (document.visibilityState === "hidden" || (pending && event?.type !== "alerts-updated")) return;
+      pending?.abort();
+      const request = new AbortController();
+      pending = request;
       try {
-        const response = await fetch("/api/alerts/count", { signal: controller.signal });
-        if (response.ok) setCount((await response.json()).count);
-      } catch { /* Keep the last known count. */ }
+        const response = await fetch("/api/alerts/count", {
+          signal: AbortSignal.any([lifetime.signal, request.signal]),
+        });
+        if (!response.ok) return;
+        const { count } = await response.json();
+        if (!request.signal.aborted && !lifetime.signal.aborted) setCount(count);
+      } catch {
+        // Keep the last known count until the next successful refresh.
+      } finally {
+        if (pending === request) pending = undefined;
+      }
     }
     void refresh();
     const timer = window.setInterval(refresh, 30000);
     window.addEventListener("alerts-updated", refresh);
     window.addEventListener("focus", refresh);
     return () => {
-      controller.abort();
+      lifetime.abort();
       window.clearInterval(timer);
       window.removeEventListener("alerts-updated", refresh);
       window.removeEventListener("focus", refresh);
@@ -67,9 +80,9 @@ export default function NotificationBell() {
   }
   return (
     <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (value) { setAlerts(undefined); setError(""); } }}>
-      <DialogTrigger render={<Button variant="ghost" size="icon" className="relative" aria-label={`${count} unread alerts`} />}>
+      <DialogTrigger render={<Button variant="ghost" size="icon" className="relative size-10" aria-label={`Notifications, ${count} unread`} />}>
         <Bell className="size-5" />
-        {count > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-destructive px-1 text-xs text-white">{count > 99 ? "99+" : count}</span>}
+        {count > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-destructive px-1 text-xs text-destructive-foreground">{count > 99 ? "99+" : count}</span>}
       </DialogTrigger>
       <DialogContent className="max-h-[80dvh] overflow-y-auto">
         <DialogTitle>Notifications</DialogTitle>

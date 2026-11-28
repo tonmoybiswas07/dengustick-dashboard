@@ -34,7 +34,8 @@ export function GlobalSearch() {
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
         if (!response.ok) throw new Error();
-        setResult({ query, groups: (await response.json()).groups });
+        const { groups } = await response.json();
+        if (!controller.signal.aborted) setResult({ query, groups });
       } catch {
         if (!controller.signal.aborted) setResult({ query, groups: [], error: "Search is temporarily unavailable." });
       }
@@ -44,7 +45,10 @@ export function GlobalSearch() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="icon" variant="ghost" aria-label="Search (Ctrl or Command K)" />}><Search className="size-5" /></DialogTrigger>
+      <DialogTrigger render={<Button variant="ghost" className="h-10 min-w-10 px-2 lg:border lg:bg-background" aria-label="Search dashboard" aria-keyshortcuts="Control+K Meta+K" />}><Search className="size-4" aria-hidden="true" />
+        <span className="hidden lg:inline">Search</span>
+        <kbd aria-hidden="true" className="hidden rounded border px-1 font-mono text-xs text-muted-foreground 2xl:inline">⌘ / Ctrl K</kbd>
+      </DialogTrigger>
       <DialogContent initialFocus={searchInput} className="max-h-[80dvh] overflow-y-auto">
         <DialogTitle>Search dashboard</DialogTitle>
         <DialogDescription>Search records you can access. Use Tab to move through results.</DialogDescription>

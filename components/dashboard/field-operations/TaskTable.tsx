@@ -132,7 +132,7 @@ export default function TaskTable({
                       </p>
 
                       {task.isOverdue && (
-                        <span className="text-xs text-red-600">
+                        <span className="text-xs font-medium text-destructive">
                           Overdue
                         </span>
                       )}

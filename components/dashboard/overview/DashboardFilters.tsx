@@ -61,7 +61,7 @@ export default function DashboardFilters({
       >
         <RefreshCw
           className={`size-4 ${
-            loading ? "animate-spin" : ""
+            loading ? "motion-safe:animate-spin" : ""
           }`}
         />
 

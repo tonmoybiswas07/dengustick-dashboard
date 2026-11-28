@@ -40,12 +40,12 @@ export function RecoveryForm({ reset }: { reset: boolean }) {
     }
   }
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} aria-busy={busy} className="space-y-4">
       {reset ? <>
-        <label className="block">New password<Input name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} /></label>
-        <label className="block">Confirm password<Input name="confirmation" type="password" autoComplete="new-password" required minLength={12} maxLength={128} /></label>
-      </> : <label className="block">Email address<Input name="email" type="email" autoComplete="email" required maxLength={254} /></label>}
-      <Button disabled={busy} type="submit">{busy ? "Working…" : reset ? "Reset password" : "Send reset link"}</Button>
+        <label className="block">New password<Input className="mt-1 h-11" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} /></label>
+        <label className="block">Confirm password<Input className="mt-1 h-11" name="confirmation" type="password" autoComplete="new-password" required minLength={12} maxLength={128} /></label>
+      </> : <label className="block">Email address<Input className="mt-1 h-11" name="email" type="email" autoComplete="email" required maxLength={254} /></label>}
+      <Button className="min-h-10 w-full" disabled={busy} type="submit">{busy ? "Working…" : reset ? "Reset password" : "Send reset link"}</Button>
       {message && <p role="status" className="text-sm">{message}</p>}
     </form>
   );

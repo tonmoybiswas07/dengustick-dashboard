@@ -26,9 +26,9 @@ import type {
 } from "@/app/types/dashboard";
 
 const colors: Record<string, string> = {
-  Positive: "#ef4444",
-  Negative: "#0d9488",
-  Inconclusive: "#f59e0b",
+  Positive: "var(--chart-4)",
+  Negative: "var(--chart-1)",
+  Inconclusive: "var(--chart-3)",
 };
 
 export default function DetectionChart({
@@ -76,6 +76,7 @@ export default function DetectionChart({
               >
                 <PieChart>
                   <Pie
+                    isAnimationActive={false}
                     data={data}
                     dataKey="value"
                     nameKey="name"

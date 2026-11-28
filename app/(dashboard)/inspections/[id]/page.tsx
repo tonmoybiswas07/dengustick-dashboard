@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { auditCollection } from "@/lib/audit";
 import Image from "next/image";
 import Link from "next/link";
@@ -104,9 +105,7 @@ export default async function InspectionDetailsPage({
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
-            Inspection Details
-          </h1>
+          <PageHeader title="Inspection details" />
 
           <p className="mt-1 break-all text-sm text-muted-foreground">
             {inspection.inspectionId}

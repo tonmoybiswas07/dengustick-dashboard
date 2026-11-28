@@ -19,7 +19,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "DengueVision | Surveillance Dashboard",
+  title: "DengueStick | Surveillance Dashboard",
   description:
     "AI-powered mosquito larvae detection and surveillance platform.",
 };

@@ -1,13 +1,12 @@
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { requirePermission } from "@/lib/session";
 
 export default async function PermissionTestPage() {
   const session = await requirePermission("users:manage");
 
   return (
-    <div className="space-y-3 p-6">
-      <h1 className="text-2xl font-bold">
-        Permission Test
-      </h1>
+    <div className="space-y-4">
+      <PageHeader title="Permission test" />
 
       <p>Access granted successfully.</p>
 

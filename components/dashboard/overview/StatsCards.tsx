@@ -89,9 +89,9 @@ export default function StatsCards({
                 </div>
               </div>
 
-              <h2 className="mt-4 text-3xl font-bold tracking-tight">
+              <p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">
                 {card.value?.toLocaleString()}
-              </h2>
+              </p>
 
               <p className="mt-2 text-xs text-muted-foreground">
                 {card.description}

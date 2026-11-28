@@ -309,7 +309,7 @@ export default function AssignTaskDialog({
               }
             >
               {loading && (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 motion-safe:animate-spin" />
               )}
 
               Assign Task

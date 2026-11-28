@@ -34,7 +34,9 @@ export default function DistrictChart({
         <CardTitle>District-wise Surveillance</CardTitle>
 
         <CardDescription>
-          Top 10 districts by inspection volume
+          {chartData.length
+            ? `Top ${chartData.length} districts by inspection volume. ${chartData[0].district} leads with ${chartData[0].total.toLocaleString()} inspections.`
+            : "Districts by inspection volume"}
         </CardDescription>
       </CardHeader>
 
@@ -102,17 +104,19 @@ export default function DistrictChart({
                 <Legend />
 
                 <Bar
+                  isAnimationActive={false}
                   dataKey="total"
                   name="Total Inspections"
-                  fill="#0d9488"
+                  fill="var(--chart-1)"
                   radius={[5, 5, 0, 0]}
                   maxBarSize={40}
                 />
 
                 <Bar
+                  isAnimationActive={false}
                   dataKey="positive"
                   name="Verified Positive"
-                  fill="#f59e0b"
+                  fill="var(--chart-3)"
                   radius={[5, 5, 0, 0]}
                   maxBarSize={40}
                 />

@@ -211,6 +211,7 @@ export default function InspectionTable({
           <Button
             variant="outline"
             size="icon"
+            aria-label="Previous page"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
           >
@@ -224,6 +225,7 @@ export default function InspectionTable({
           <Button
             variant="outline"
             size="icon"
+            aria-label="Next page"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
           >

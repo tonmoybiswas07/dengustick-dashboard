@@ -339,7 +339,7 @@ export default function AddInspectionForm({
 
             <Button type="submit" disabled={loading || uploadsBusy}>
               {loading && (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 motion-safe:animate-spin" />
               )}
               {inspection ? "Save Changes" : "Create Inspection"}
             </Button>

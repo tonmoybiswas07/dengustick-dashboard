@@ -13,15 +13,15 @@ export const taskStatuses = [
 ] as const;
 
 export const priorityColors = {
-  low: "bg-slate-500/10 text-slate-500",
-  medium: "bg-blue-500/10 text-blue-600",
-  high: "bg-amber-500/10 text-amber-600",
-  urgent: "bg-red-500/10 text-red-600",
+  low: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
+  medium: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  high: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
+  urgent: "bg-red-500/10 text-red-700 dark:text-red-300",
 };
 
 export const taskStatusColors = {
-  assigned: "bg-blue-500/10 text-blue-600",
-  in_progress: "bg-amber-500/10 text-amber-600",
-  completed: "bg-emerald-500/10 text-emerald-600",
-  cancelled: "bg-slate-500/10 text-slate-500",
+  assigned: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  in_progress: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
+  completed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  cancelled: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
 };

@@ -406,7 +406,7 @@ export default function ReviewDialog({
                 className="bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 {loading ? (
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 className="size-4 motion-safe:animate-spin" />
                 ) : (
                   <ShieldCheck className="size-4" />
                 )}

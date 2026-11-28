@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { TwoFactorSettings } from "@/components/dashboard/account/TwoFactorSettings";
 import { predictionConfigured } from "@/lib/inspection-predictions";
 import { ImageCleanupButton } from "@/components/dashboard/account/ImageCleanupButton";
@@ -17,7 +18,7 @@ export default async function SettingsPage() {
   const storageConfigured = user.role === "admin" && !!getImageStorage();
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <h1 className="text-3xl font-bold">Settings</h1>
+      <PageHeader title="Settings" description="Manage appearance, notifications, and account security." />
       <Link href="/profile" className="text-sm text-primary underline">Manage profile and password</Link>
       <SettingsForms personal={personal} system={system} />
       <TwoFactorSettings enabled={"twoFactorEnabled" in user && user.twoFactorEnabled === true} />

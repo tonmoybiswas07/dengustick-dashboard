@@ -86,16 +86,18 @@ export default function ConfidenceChart({
               <Legend />
 
               <Bar
+                isAnimationActive={false}
                 dataKey="correct"
                 name="Correct"
-                fill="#0d9488"
+                fill="var(--chart-1)"
                 radius={[5, 5, 0, 0]}
               />
 
               <Bar
+                isAnimationActive={false}
                 dataKey="incorrect"
                 name="Incorrect"
-                fill="#ef4444"
+                fill="var(--chart-4)"
                 radius={[5, 5, 0, 0]}
               />
             </BarChart>

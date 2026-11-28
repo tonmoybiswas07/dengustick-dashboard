@@ -166,7 +166,7 @@ export default function GenerateReportForm({
                   updateField("type", value ?? "")
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger aria-label="Report type" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
 
@@ -233,7 +233,7 @@ export default function GenerateReportForm({
                   updateField("district", value ?? "")
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger aria-label="Report district" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
 
@@ -262,7 +262,7 @@ export default function GenerateReportForm({
               className="w-full sm:w-auto"
             >
               {loading ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 motion-safe:animate-spin" />
               ) : (
                 <FilePlus2 className="size-4" />
               )}

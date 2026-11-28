@@ -75,6 +75,14 @@ export default function Navbar({ user, preferences }: NavbarProps) {
       (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
     );
 
+  const pageName = currentPage?.title ?? ({
+    "/profile": "Profile",
+    "/settings": "Settings",
+    "/audit": "Audit log",
+    "/permission-test": "Permission test",
+  } as Record<string, string>)[pathname] ?? "Dashboard";
+  const inspectionDetail = pathname.startsWith("/inspections/");
+
   const initials =
     user.name
       .trim()
@@ -82,7 +90,7 @@ export default function Navbar({ user, preferences }: NavbarProps) {
       .slice(0, 2)
       .map((word) => word.charAt(0))
       .join("")
-      .toUpperCase() || "DV";
+      .toUpperCase() || "DS";
 
   async function toggleTheme() {
     const theme = resolvedTheme === "dark" ? "light" : "dark";
@@ -123,15 +131,15 @@ export default function Navbar({ user, preferences }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b bg-card px-4 md:px-6">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-1 border-b bg-card px-2 sm:px-4 lg:px-6">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
             render={
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="size-10 lg:hidden"
                 aria-label="Open navigation"
               />
             }
@@ -141,7 +149,7 @@ export default function Navbar({ user, preferences }: NavbarProps) {
 
           <SheetContent
             side="left"
-            className="w-64 border-none p-0"
+            className="w-60 max-w-[calc(100vw-2rem)] border-none p-0"
             showCloseButton={false}
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
@@ -150,22 +158,23 @@ export default function Navbar({ user, preferences }: NavbarProps) {
           </SheetContent>
         </Sheet>
 
-        <div>
-          <h2 className="text-sm font-semibold md:text-lg">
-            {currentPage?.title || "DengueVision"}
-          </h2>
-
-          <p className="hidden text-xs text-muted-foreground sm:block">
-            DengueVision / {currentPage?.title || "Dashboard"}
-          </p>
+        <div className="min-w-0 text-sm font-semibold">
+          {inspectionDetail ? (
+            <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 sm:gap-2">
+              <Link href="/inspections" className="truncate text-muted-foreground hover:underline">Inspections</Link>
+              <span aria-hidden="true">/</span>
+              <span aria-current="page" className="truncate">Details</span>
+            </nav>
+          ) : <p className="truncate">{pageName}</p>}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Toggle theme"
+          className="size-10"
+          aria-label="Toggle light and dark theme"
           onClick={toggleTheme}
         >
           <Sun className="size-5 dark:hidden" />
@@ -175,18 +184,18 @@ export default function Navbar({ user, preferences }: NavbarProps) {
         <GlobalSearch />
         {preferences.alertNotifications && hasPermission(user.role, "alerts:view") && <NotificationBell />}
 
-        <div className="h-8 w-px bg-border" />
+        <div className="hidden h-7 w-px bg-border sm:block" aria-hidden="true" />
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" className="h-auto gap-2 px-1 md:px-2" />}>
+          <DropdownMenuTrigger render={<Button variant="ghost" aria-label="Account menu" className="min-h-10 gap-2 px-1 md:px-2" />}>
             <Avatar className="size-9">
               <AvatarFallback className="bg-primary/10 font-semibold text-primary">
                 {initials}
               </AvatarFallback>
             </Avatar>
 
-            <div className="hidden text-left md:block">
-              <p className="text-sm font-semibold">{user.name}</p>
+            <div className="hidden max-w-36 text-left xl:block">
+              <p className="truncate text-sm font-semibold">{user.name}</p>
 
               <p className="text-xs text-muted-foreground">
                 {roleLabels[user.role] || "User"}
@@ -200,7 +209,7 @@ export default function Navbar({ user, preferences }: NavbarProps) {
             <DropdownMenuGroup>
               <DropdownMenuLabel>
                 <div className="space-y-1">
-                  <p className="font-semibold">{user.name}</p>
+                  <p className="wrap-anywhere font-semibold">{user.name}</p>
 
                   <p className="truncate text-xs font-normal text-muted-foreground">
                     {user.email}

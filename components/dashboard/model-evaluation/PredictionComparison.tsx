@@ -88,17 +88,19 @@ export default function PredictionComparison({
               <Legend />
 
               <Bar
+                isAnimationActive={false}
                 dataKey="ai"
                 name="AI Prediction"
-                fill="#0d9488"
+                fill="var(--chart-1)"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={65}
               />
 
               <Bar
+                isAnimationActive={false}
                 dataKey="manual"
                 name="Manual Verification"
-                fill="#6366f1"
+                fill="var(--chart-5)"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={65}
               />

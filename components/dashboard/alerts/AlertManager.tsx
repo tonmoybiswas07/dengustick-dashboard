@@ -1,5 +1,8 @@
 "use client";
 
+import { ContentSkeleton } from "@/components/dashboard/ContentSkeleton";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+
 import { useEffect, useState } from "react";
 
 import {
@@ -254,16 +257,8 @@ export default function AlertManager({
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight md:text-3xl">
-            <BellRing className="size-7 text-primary" />
-            Alerts Management
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground">
-            Monitor surveillance alerts and field operation issues.
-          </p>
-        </div>
+        <PageHeader title="Alerts Management" icon={<BellRing />}
+          description="Monitor surveillance alerts and field operation issues." />
 
         <div className="flex flex-wrap gap-2">
           <Button
@@ -273,7 +268,7 @@ export default function AlertManager({
           >
             <RefreshCw
               className={`size-4 ${
-                loading ? "animate-spin" : ""
+                loading ? "motion-safe:animate-spin" : ""
               }`}
             />
             Refresh
@@ -285,7 +280,7 @@ export default function AlertManager({
               onClick={handleSync}
             >
               {syncing ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 motion-safe:animate-spin" />
               ) : (
                 <BellRing className="size-4" />
               )}
@@ -332,7 +327,7 @@ export default function AlertManager({
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-full lg:w-48">
+          <SelectTrigger aria-label="Alert severity" className="w-full lg:w-48">
             <SelectValue placeholder="All Severity" />
           </SelectTrigger>
 
@@ -354,9 +349,7 @@ export default function AlertManager({
       </div>
 
       {loading ? (
-        <div className="flex min-h-64 items-center justify-center rounded-xl border bg-card">
-          <Loader2 className="size-8 animate-spin text-primary" />
-        </div>
+        <ContentSkeleton label="Loading alerts…" className="min-h-64" />
       ) : error ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-xl border bg-card">
           <p className="text-sm text-destructive">
@@ -412,6 +405,7 @@ export default function AlertManager({
             <Button
               variant="outline"
               size="icon"
+              aria-label="Previous page"
               disabled={page <= 1}
               onClick={() =>
                 setPage((previous) => previous - 1)
@@ -427,6 +421,7 @@ export default function AlertManager({
             <Button
               variant="outline"
               size="icon"
+              aria-label="Next page"
               disabled={page >= totalPages}
               onClick={() =>
                 setPage((previous) => previous + 1)
@@ -494,7 +489,7 @@ export default function AlertManager({
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {updating ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 motion-safe:animate-spin" />
               ) : (
                 <CircleCheck className="size-4" />
               )}

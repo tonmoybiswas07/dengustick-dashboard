@@ -1,11 +1,13 @@
 "use client";
 
+import { ContentSkeleton } from "@/components/dashboard/ContentSkeleton";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+
 import { useEffect, useState } from "react";
 
 import {
   ChartNoAxesCombined,
   RefreshCw,
-  Loader2,
   ChartNoAxesColumn,
   Info,
 } from "lucide-react";
@@ -107,18 +109,8 @@ export default function AnalyticsManager({
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight md:text-3xl">
-            <ChartNoAxesCombined className="size-7 text-primary" />
-
-            Surveillance Analytics
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground">
-            Analyze mosquito larvae surveillance, inspection
-            trends and field activity.
-          </p>
-        </div>
+        <PageHeader title="Surveillance Analytics" icon={<ChartNoAxesCombined />}
+          description="Analyze mosquito larvae surveillance, inspection trends and field activity." />
 
         <Button
           variant="outline"
@@ -127,7 +119,7 @@ export default function AnalyticsManager({
         >
           <RefreshCw
             className={`size-4 ${
-              loading ? "animate-spin" : ""
+              loading ? "motion-safe:animate-spin" : ""
             }`}
           />
 
@@ -160,13 +152,7 @@ export default function AnalyticsManager({
         <p>Verified positive {data.summary.positiveDetections} current · {data.previousPeriod.verifiedPositive} previous</p>
       </div>}
       {loading ? (
-        <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-xl border bg-card">
-          <Loader2 className="size-8 animate-spin text-primary" />
-
-          <p className="text-sm text-muted-foreground">
-            Loading surveillance analytics...
-          </p>
-        </div>
+        <ContentSkeleton label="Loading surveillance analytics…" className="min-h-80" />
       ) : error ? (
         <div className="flex min-h-80 flex-col items-center justify-center gap-4 rounded-xl border bg-card">
           <p className="text-sm text-destructive">
