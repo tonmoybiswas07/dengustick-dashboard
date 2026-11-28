@@ -1,3 +1,4 @@
+import { getAlertFilter } from "@/lib/alert-access";
 import "server-only";
 
 import type { Document } from "mongodb";
@@ -127,14 +128,8 @@ export async function getDashboardData(
       : {}),
   };
 
-  const alertFilter: Document = {
-    ...regionFilter,
-    ...(isFieldWorker
-      ? {
-          assignedTo: user.id,
-        }
-      : {}),
-  };
+  const alertFilter = getAlertFilter(user);
+
 
   const { start, dates } = getDateRange(days);
 
@@ -276,7 +271,7 @@ export async function getDashboardData(
         })
       : Promise.resolve(null),
 
-    canViewAlerts
+    canViewAlerts && alertFilter
       ? alertsCollection.countDocuments({
           ...alertFilter,
           status: "active",
@@ -293,7 +288,7 @@ export async function getDashboardData(
           .toArray()
       : Promise.resolve([]),
 
-    canViewAlerts
+    canViewAlerts && alertFilter
       ? alertsCollection
           .aggregate([
             {

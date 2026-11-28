@@ -4,7 +4,11 @@ if (!process.env.MONGODB_URI) throw new Error("Set MONGODB_URI for the intended 
 const client = new MongoClient(process.env.MONGODB_URI);
 const db = client.db(process.env.MONGODB_DB || "DengueStickDB");
 const indexes = {
+  inspection_images: [[{ expiresAt: 1 }], [{ inspectionId: 1 }]],
   inspections: [
+    [{ "predictionJob.status": 1, "predictionJob.queuedAt": 1 }],
+    [{ "predictionJob.status": 1, "predictionJob.leaseUntil": 1 }],
+    [{ regionId: 1, "prediction.modelVersion": 1, inspectedAt: -1 }],
     [{ inspectionId: 1 }, { unique: true }],
     [{ inspectedAt: -1, _id: -1 }],
     [{ createdAt: -1, _id: -1 }],
@@ -34,6 +38,7 @@ const indexes = {
     [{ regionId: 1, status: 1, createdAt: -1, _id: -1 }],
     [{ regionId: 1, assignedTo: 1, createdAt: -1, _id: -1 }],
   ],
+  report_schedules: [[{ enabled: 1, nextRunAt: 1 }], [{ ownerId: 1, regionId: 1, title: 1, frequency: 1 }, { unique: true }]],
   reports: [
     [{ reportId: 1 }, { unique: true }],
     [{ createdAt: -1, _id: -1 }],
@@ -45,7 +50,7 @@ const indexes = {
   session: [[{ token: 1 }, { unique: true }], [{ userId: 1 }], [{ userId: 1, expiresAt: 1 }]],
   account: [[{ userId: 1 }], [{ userId: 1, providerId: 1 }]],
   verification: [[{ identifier: 1 }]],
-  audit_logs: [[{ timestamp: -1, _id: -1 }], [{ action: 1, timestamp: -1, _id: -1 }], [{ actorId: 1, timestamp: -1, _id: -1 }]],
+  audit_logs: [[{ resource: 1, resourceId: 1, timestamp: -1 }],[{ timestamp: -1, _id: -1 }], [{ action: 1, timestamp: -1, _id: -1 }], [{ actorId: 1, timestamp: -1, _id: -1 }]],
   request_limits: [[{ expiresAt: 1 }, { expireAfterSeconds: 0 }]],
 };
 

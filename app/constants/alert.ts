@@ -15,6 +15,8 @@ export const severityColors = {
 export const alertTypeLabels = {
   positive_detection: "Positive Detection",
   overdue_task: "Overdue Task",
+  task_assigned: "Task Assigned",
+  task_due_soon: "Task Due Soon",
 };
 
 export const alertStatusColors = {

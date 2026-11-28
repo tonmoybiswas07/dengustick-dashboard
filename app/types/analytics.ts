@@ -46,6 +46,7 @@ export interface WorkerPerformance {
 }
 
 export interface AnalyticsData {
+  previousPeriod: { total: number; verifiedPositive: number } | null;
   summary: AnalyticsSummary;
   trends: InspectionTrend[];
   detectionDistribution: DetectionDistribution[];

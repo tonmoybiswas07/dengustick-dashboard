@@ -38,6 +38,8 @@ export interface PredictionComparisonData {
 }
 
 export interface ModelEvaluationData {
+  versions: { version: string; eligible: number; accuracy: number | null }[];
+  countErrors: { samples: number; mae: number; rmse: number } | null;
   metrics: EvaluationMetrics;
   confusionMatrix: ConfusionMatrixData;
   summary: EvaluationSummaryData;

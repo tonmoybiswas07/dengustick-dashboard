@@ -1,3 +1,4 @@
+import { createAlert } from "@/lib/alert-service";
 import client from "@/lib/db";
 import { lockRegion } from "@/lib/region-security";
 import { taskQuery } from "@/lib/validations/query";
@@ -240,6 +241,12 @@ export async function POST(request: Request) {
       const result =
         await fieldTasksCollection.insertOne(task, { session: dbSession });
 
+      await createAlert({
+        title: "New Field Task", message: `You were assigned "${task.title}".`,
+        type: "task_assigned", severity: task.priority === "urgent" ? "high" : "medium",
+        regionId: task.regionId, sourceId: result.insertedId.toHexString(), sourceType: "field_task",
+        assignedTo: task.assignedTo, location: { district: task.location.district, area: task.location.area },
+      }, dbSession);
       await audit({ actorId: user.id, action: "task.assign", resource: "task", resourceId: result.insertedId.toHexString(), regionId: task.regionId }, dbSession);
 
       return Response.json(

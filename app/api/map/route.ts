@@ -1,3 +1,4 @@
+import { mapQuery } from "@/lib/validations/map";
 import { connection } from "next/server";
 import { authorizeAPI } from "@/lib/api-auth";
 import { inspectionsCollection } from "@/lib/collections";
@@ -20,19 +21,31 @@ export async function GET(request: Request) {
       );
     }
 
+    const parsed = mapQuery.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+    if (!parsed.success) return Response.json({ message: "Invalid map filters" }, { status: 400 });
+    const { search, district, region, start, end, detection, status } = parsed.data;
+    if (region && session.user.role !== "admin" && session.user.regionId !== region) {
+      return Response.json({ message: "Region access denied" }, { status: 403 });
+    }
+    const escaped = search?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const query = {
       ...filter,
-      "location.latitude": {
-        $gte: -90,
-        $lte: 90,
-      },
-      "location.longitude": {
-        $gte: -180,
-        $lte: 180,
-      },
+      ...(region && { regionId: region }),
+      ...(district && { "location.district": district }),
+      ...(detection && { detectionResult: detection, confidenceScore: { $gte: 0, $lte: 1 } }),
+      ...(status && { status }),
+      ...((start || end) && { inspectedAt: {
+        ...(start && { $gte: new Date(`${start}T00:00:00.000+06:00`) }),
+        ...(end && { $lt: new Date(new Date(`${end}T00:00:00.000+06:00`).getTime() + 86_400_000) }),
+      } }),
+      ...(escaped && { $or: ["inspectionId", "location.area", "location.address", "location.district"].map(
+        (field) => ({ [field]: { $regex: escaped, $options: "i" } }),
+      ) }),
+      "location.latitude": { $gte: -90, $lte: 90 },
+      "location.longitude": { $gte: -180, $lte: 180 },
     };
 
-    const [inspections, total] = await Promise.all([
+    const [inspections, total, districtNames] = await Promise.all([
       inspectionsCollection
         .find(query)
         .project({
@@ -48,9 +61,11 @@ export async function GET(request: Request) {
           inspectedAt: 1,
         })
         .sort({ inspectedAt: -1, _id: -1 })
-        .limit(5000)
+        .maxTimeMS(2500)
+        .limit(1500)
         .toArray(),
-      inspectionsCollection.countDocuments(query),
+      inspectionsCollection.countDocuments(query, { maxTimeMS: 2500 }),
+      inspectionsCollection.distinct("location.district", filter, { maxTimeMS: 2500 }),
     ]);
 
     return Response.json({
@@ -60,6 +75,7 @@ export async function GET(request: Request) {
         _id: inspection._id.toString(),
       })),
       total,
+      districts: districtNames.filter((name): name is string => typeof name === "string").sort(),
       truncated: total > inspections.length,
     });
   } catch (error) {

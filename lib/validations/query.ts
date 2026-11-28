@@ -32,3 +32,9 @@ export const statisticsQuery = z.object({
   range: z.enum(["7", "30", "90", "365", "all"]).default("30"),
   district: z.string().trim().min(1).max(100).default("all"),
 });
+
+export const analyticsDateQuery = statisticsQuery.extend({
+  start: z.iso.date().optional(),
+  end: z.iso.date().optional(),
+}).refine(({ start, end }) => !start && !end ||
+  !!start && !!end && start <= end && Date.parse(end) - Date.parse(start) <= 365 * 86_400_000);

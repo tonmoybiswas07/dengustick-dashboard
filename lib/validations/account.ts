@@ -4,8 +4,8 @@ export const profileSchema = z.strictObject({
   name: z.string().trim().min(3).max(100),
   image: z.union([
     z.url({ protocol: /^https$/ }).max(2048).refine((value) => {
-      const url = new URL(value);
-      return !url.username && !url.password;
+      const url = URL.parse(value);
+      return !!url && !url.username && !url.password;
     }, "Use an HTTPS image URL without credentials"),
     z.null(),
   ]),

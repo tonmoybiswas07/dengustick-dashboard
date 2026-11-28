@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
+const stagingPort = process.env.DENGUE_AUTH_STAGING_PORT;
+const stagingBuildDir = process.env.NODE_ENV === "development" && stagingPort && /^\d{1,5}$/.test(stagingPort)
+  ? `.next/staging-auth-${stagingPort}`
+  : undefined;
 const nextConfig: NextConfig = {
+  ...(stagingBuildDir && {
+    distDir: stagingBuildDir,
+    typescript: { tsconfigPath: `${stagingBuildDir}/tsconfig.json` },
+  }),
   async headers() {
     const production = process.env.NODE_ENV === "production";
     const csp = [

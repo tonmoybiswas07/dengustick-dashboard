@@ -1,5 +1,6 @@
 "use client";
 
+import { GlobalSearch } from "./GlobalSearch";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
@@ -171,6 +172,7 @@ export default function Navbar({ user, preferences }: NavbarProps) {
           <Moon className="hidden size-5 dark:block" />
         </Button>
 
+        <GlobalSearch />
         {preferences.alertNotifications && hasPermission(user.role, "alerts:view") && <NotificationBell />}
 
         <div className="h-8 w-px bg-border" />

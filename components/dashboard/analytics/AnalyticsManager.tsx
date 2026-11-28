@@ -32,6 +32,8 @@ export default function AnalyticsManager({
     useState<AnalyticsData | null>(null);
 
   const [range, setRange] = useState("30");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
   const [district, setDistrict] = useState("all");
 
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,7 @@ export default function AnalyticsManager({
           district,
         });
 
+        if (start && end) { params.set("start", start); params.set("end", end); }
         const response = await fetch(
           `/api/analytics?${params}`,
           {
@@ -89,7 +92,7 @@ export default function AnalyticsManager({
     void fetchAnalytics();
 
     return () => controller.abort();
-  }, [range, district, refreshKey]);
+  }, [range, district, start, end, refreshKey]);
 
   function refreshData() {
     setRefreshKey((previous) => previous + 1);
@@ -97,6 +100,7 @@ export default function AnalyticsManager({
 
   function resetFilters() {
     setRange("30");
+    setStart(""); setEnd("");
     setDistrict("all");
   }
 
@@ -133,6 +137,10 @@ export default function AnalyticsManager({
 
       <Card className="gap-0 py-0">
         <CardContent className="p-4">
+          <div className="mb-4 flex flex-wrap gap-3 text-sm">
+            <label>From <input className="block rounded border bg-background p-2" type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label>
+            <label>Through <input className="block rounded border bg-background p-2" type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label>
+          </div>
           <AnalyticsFilters
             range={range}
             district={district}
@@ -146,6 +154,11 @@ export default function AnalyticsManager({
         </CardContent>
       </Card>
 
+      {!loading && !error && data?.previousPeriod && <div className="rounded-md border p-4 text-sm">
+        <p className="font-medium">Previous-period comparison</p>
+        <p>Inspections {data.summary.totalInspections} current · {data.previousPeriod.total} previous</p>
+        <p>Verified positive {data.summary.positiveDetections} current · {data.previousPeriod.verifiedPositive} previous</p>
+      </div>}
       {loading ? (
         <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-xl border bg-card">
           <Loader2 className="size-8 animate-spin text-primary" />

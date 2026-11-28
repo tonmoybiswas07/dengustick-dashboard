@@ -1,5 +1,6 @@
 "use client";
 
+import InspectionImageUploads from "./InspectionImageUploads";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
@@ -54,6 +55,9 @@ export default function AddInspectionForm({
   inspection,
 }: AddInspectionFormProps) {
   const [loading, setLoading] = useState(false);
+  const [uploadsBusy, setUploadsBusy] = useState(false);
+  const [uploaded, setUploaded] = useState<string[]>([]);
+  const [savedImages, setSavedImages] = useState(() => (inspection?.images ?? []).filter((image) => image.startsWith("/api/inspection-images/")));
 
   const [form, setForm] = useState({
     regionId: inspection?.regionId ?? regionId,
@@ -64,7 +68,7 @@ export default function AddInspectionForm({
     longitude: String(inspection?.location.longitude ?? ""),
     breedingSiteType:
       inspection?.breedingSiteType ?? "water_container",
-    images: inspection?.images.join("\n") ?? "",
+    images: (inspection?.images ?? []).filter((image) => !image.startsWith("/api/inspection-images/")).join("\n"),
     notes: inspection?.notes ?? "",
     inspectedAt: localDateTime(
       inspection
@@ -82,6 +86,8 @@ export default function AddInspectionForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (uploadsBusy) return;
 
     if (!form.latitude.trim() || !form.longitude.trim()) {
       toast.error("Location coordinates are required");
@@ -101,10 +107,7 @@ export default function AddInspectionForm({
           longitude: Number(form.longitude),
         },
         breedingSiteType: form.breedingSiteType,
-        images: form.images
-          .split("\n")
-          .map((image) => image.trim())
-          .filter(Boolean),
+        images: [...savedImages, ...uploaded, ...form.images.split("\n").map((image) => image.trim()).filter(Boolean)],
         notes: form.notes,
         inspectedAt: new Date(form.inspectedAt).toISOString(),
       };
@@ -289,6 +292,14 @@ export default function AddInspectionForm({
             />
           </div>
 
+          <InspectionImageUploads region={form.regionId} saved={[...savedImages, ...form.images.split("\n").filter((value) => value.trim())]}
+            onChange={setUploaded} onBusyChange={setUploadsBusy} />
+          {savedImages.map((url, index) => (
+            <div key={url} className="flex items-center justify-between gap-2">
+              <a href={url} target="_blank" rel="noreferrer" className="text-sm underline">View attached image {index + 1}</a>
+              <Button type="button" variant="outline" onClick={() => setSavedImages((items) => items.filter((item) => item !== url))}>Remove</Button>
+            </div>
+          ))}
           <div className="space-y-2">
             <Label htmlFor="images">Image URLs</Label>
             <Textarea
@@ -326,7 +337,7 @@ export default function AddInspectionForm({
               Cancel
             </Button>
 
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || uploadsBusy}>
               {loading && (
                 <Loader2 className="size-4 animate-spin" />
               )}

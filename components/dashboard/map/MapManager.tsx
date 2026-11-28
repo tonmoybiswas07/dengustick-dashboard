@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { MapPinned, Loader2, RefreshCw } from "lucide-react";
 
@@ -16,7 +16,7 @@ const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
   loading: () => (
     <div className="flex h-[600px] items-center justify-center rounded-xl border bg-card">
-      <Loader2 className="size-8 animate-spin text-primary" />
+      <Loader2 className="size-8 motion-safe:animate-spin text-primary" />
     </div>
   ),
 });
@@ -30,6 +30,12 @@ export default function MapManager({
   const [search, setSearch] = useState("");
   const [district, setDistrict] = useState("all");
   const [detection, setDetection] = useState("all");
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [region, setRegion] = useState("");
+  const [status, setStatus] = useState("all");
+  const [density, setDensity] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,7 +51,11 @@ export default function MapManager({
         setLoading(true);
         setError("");
 
-        const response = await fetch("/api/map", {
+        const query = new URLSearchParams();
+        for (const [key, value] of Object.entries({ search, district, detection, start, end, region, status })) {
+          if (value && value !== "all") query.set(key, value);
+        }
+        const response = await fetch(`/api/map?${query}`, {
           cache: "no-store",
           signal: controller.signal,
         });
@@ -61,6 +71,7 @@ export default function MapManager({
         if (controller.signal.aborted) return;
 
         setInspections(result.data);
+        setDistricts(result.districts);
         setTruncated(result.truncated);
         setTotal(result.total);
       } catch (error) {
@@ -78,49 +89,9 @@ export default function MapManager({
       }
     }
 
-    void fetchInspections();
-
-    return () => controller.abort();
-  }, [refreshKey]);
-
-  const districts = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          inspections.map((item) => item.location.district)
-        )
-      ).sort(),
-    [inspections]
-  );
-
-  const filteredInspections = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    return inspections.filter((item) => {
-      const matchesSearch = [
-        item.location.area,
-        item.location.district,
-        item.location.address,
-        item.inspectionId,
-      ].some((value) =>
-        value.toLowerCase().includes(query)
-      );
-
-      const matchesDistrict =
-        district === "all" ||
-        item.location.district === district;
-
-      const matchesDetection =
-        detection === "all" ||
-        item.detectionResult === detection;
-
-      return (
-        matchesSearch &&
-        matchesDistrict &&
-        matchesDetection
-      );
-    });
-  }, [inspections, search, district, detection]);
+    const timer = setTimeout(fetchInspections, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [refreshKey, search, district, detection, start, end, region, status]);
 
   return (
     <div className="space-y-6">
@@ -153,9 +124,35 @@ export default function MapManager({
         </Button>
       </div>
 
+          <MapFilters
+            search={search}
+            district={district}
+            detection={detection}
+            districts={districts}
+            onSearchChange={setSearch}
+            onDistrictChange={setDistrict}
+            onDetectionChange={setDetection}
+            onReset={() => {
+              setSearch("");
+              setDistrict("all");
+              setDetection("all");
+              setStart(""); setEnd(""); setRegion(""); setStatus("all");
+            }}
+          />
+
+      <div className="flex flex-wrap items-end gap-3 text-sm">
+        <label>From <input className="block rounded border bg-background p-2" type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label>
+        <label>Through <input className="block rounded border bg-background p-2" type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label>
+        {role === "admin" && <label>Region ID <input className="block rounded border bg-background p-2" maxLength={24} value={region} onChange={(event) => setRegion(event.target.value)} /></label>}
+        <label>Inspection status <select className="block rounded border bg-background p-2" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="all">All statuses</option><option value="pending">Pending</option><option value="under_review">Under review</option><option value="verified">Verified only</option><option value="rejected">Rejected</option>
+        </select></label>
+        <Button variant="outline" aria-pressed={density} onClick={() => setDensity(!density)}>{density ? "Show clustered markers" : "Show inspection density"}</Button>
+      </div>
+
       {loading ? (
         <div className="flex h-[600px] items-center justify-center rounded-xl border bg-card">
-          <Loader2 className="size-8 animate-spin text-primary" />
+          <Loader2 className="size-8 motion-safe:animate-spin text-primary" />
         </div>
       ) : error ? (
         <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-xl border bg-card">
@@ -174,32 +171,18 @@ export default function MapManager({
         </div>
       ) : (
         <>
-          <MapStats inspections={filteredInspections} />
-
-          <MapFilters
-            search={search}
-            district={district}
-            detection={detection}
-            districts={districts}
-            onSearchChange={setSearch}
-            onDistrictChange={setDistrict}
-            onDetectionChange={setDetection}
-            onReset={() => {
-              setSearch("");
-              setDistrict("all");
-              setDetection("all");
-            }}
-          />
+          <MapStats inspections={inspections} />
 
           {truncated && (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
               Showing the latest {inspections.length} of {total}{" "}
-              mapped inspections. Filters apply to loaded records.
+              mapped inspections.
             </p>
           )}
 
           <MapView
-            inspections={filteredInspections}
+            inspections={inspections}
+            density={density}
             canViewDetails={hasPermission(
               role,
               "inspections:view"
@@ -208,14 +191,13 @@ export default function MapManager({
 
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <p>
-              Showing {filteredInspections.length} of{" "}
-              {inspections.length} loaded inspections
+              Showing {inspections.length} of {total} matching inspections
             </p>
 
             <p>Map data © OpenStreetMap contributors</p>
           </div>
 
-          {filteredInspections.length === 0 && (
+          {inspections.length === 0 && (
             <p className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
               No inspection locations match your filters.
             </p>

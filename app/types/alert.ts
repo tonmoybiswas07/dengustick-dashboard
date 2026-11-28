@@ -1,6 +1,8 @@
 export type AlertType =
   | "positive_detection"
-  | "overdue_task";
+  | "overdue_task"
+  | "task_assigned"
+  | "task_due_soon";
 
 export type AlertSeverity =
   | "low"

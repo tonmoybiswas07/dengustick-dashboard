@@ -1,8 +1,10 @@
 import "server-only";
 
+import sharp from "sharp";
+import { maxInspectionImageBytes as maxBytes } from "./inspection-image-reference.mjs";
+
 export type ImageMime = "image/jpeg" | "image/png" | "image/webp";
 export type ValidatedImage = { bytes: Uint8Array<ArrayBuffer>; type: ImageMime };
-const maxBytes = 5 * 1024 * 1024;
 const maxPixels = 16_000_000;
 
 type DecodeImage = (
@@ -11,7 +13,9 @@ type DecodeImage = (
 ) => Promise<{ image: ValidatedImage; width: number; height: number }>;
 
 export interface InspectionImageStorage {
-  put(key: string, image: ValidatedImage): Promise<void>;
+  put(key: string, image: ValidatedImage): Promise<{ version: number }>;
+  get(key: string, version: number): Promise<Response>;
+  remove(key: string): Promise<void>;
 }
 
 function hasSignature(bytes: Uint8Array, type: ImageMime) {
@@ -40,4 +44,41 @@ export async function validateInspectionImage(file: ValidatedImage, decodeAndStr
     throw new Error("Invalid decoded image");
   }
   return image;
+}
+
+export async function normalizeInspectionImage(file: ValidatedImage, edge = 1920) {
+  return validateInspectionImage(file, async (input, limitInputPixels) => {
+    const source = sharp(input.bytes, { limitInputPixels, failOn: "warning" });
+    const metadata = await source.metadata();
+    const expected = input.type.slice("image/".length);
+    if (metadata.format !== expected || (metadata.pages ?? 1) !== 1) throw new Error("Unsupported image content");
+    const { data, info } = await source.rotate().resize({
+      width: edge, height: edge, fit: "inside", withoutEnlargement: true,
+    }).webp({ quality: 82 }).toBuffer({ resolveWithObject: true });
+    return { image: { bytes: Uint8Array.from(data), type: "image/webp" }, width: info.width, height: info.height };
+  });
+}
+
+export async function boundedImageBytes(response: Request | Response, limit = maxBytes) {
+  if (Number(response.headers.get("content-length")) > limit || !response.body) {
+    throw new Error("Invalid image size");
+  }
+  const reader = response.body.getReader();
+  const buffer = new Uint8Array(limit);
+  let offset = 0;
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      if (offset + part.value.length > limit) {
+        void reader.cancel().catch(() => {});
+        throw new Error("Invalid image size");
+      }
+      buffer.set(part.value, offset);
+      offset += part.value.length;
+    }
+    return buffer.slice(0, offset);
+  } finally {
+    reader.releaseLock();
+  }
 }

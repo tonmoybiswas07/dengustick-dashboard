@@ -22,6 +22,7 @@ export default function ReviewCard({
   inspection,
   onReview,
 }: ReviewCardProps) {
+  const hasPrediction = !!inspection.prediction || inspection.confidenceScore !== null;
   const confidence =
     inspection.confidenceScore === null
       ? null
@@ -99,7 +100,7 @@ export default function ReviewCard({
             </span>
 
             <Badge variant="outline" className="capitalize">
-              {inspection.detectionResult}
+              {hasPrediction ? inspection.detectionResult : "Unavailable"}
             </Badge>
           </div>
 
@@ -120,7 +121,7 @@ export default function ReviewCard({
 
             <span className="text-sm font-semibold">
               {confidence === null
-                ? "Not processed"
+                ? "N/A"
                 : `${confidence.toFixed(1)}%`}
             </span>
           </div>

@@ -1,3 +1,5 @@
+import { publicPredictionJob } from "@/lib/inspection-prediction-state";
+import { syncInspectionImages, UnavailableInspectionImage } from "@/lib/inspection-images";
 import client from "@/lib/db";
 import { inspectionQuery } from "@/lib/validations/query";
 import { audit } from "@/lib/audit";
@@ -103,6 +105,7 @@ export async function GET(request: Request) {
       success: true,
       data: inspections.map((inspection) => ({
         ...inspection,
+        predictionJob: publicPredictionJob(inspection.predictionJob),
         _id: inspection._id.toHexString(),
       })),
       pagination: {
@@ -194,6 +197,7 @@ export async function POST(request: Request) {
     return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
       const result = await inspectionsCollection.insertOne(inspection, { session: dbSession });
 
+      await syncInspectionImages(result.insertedId, data.images, user.id, regionId, dbSession, false);
       await audit({ actorId: user.id, action: "inspection.create", resource: "inspection", resourceId: result.insertedId.toHexString(), regionId: regionId }, dbSession);
 
       return Response.json(
@@ -210,6 +214,9 @@ export async function POST(request: Request) {
     }));
   } catch (error) {
     if (error instanceof RequestBodyTooLarge) return error.response();
+    if (error instanceof UnavailableInspectionImage) {
+      return Response.json({ message: "One or more inspection images are unavailable" }, { status: 409 });
+    }
     console.error("api/inspections request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(

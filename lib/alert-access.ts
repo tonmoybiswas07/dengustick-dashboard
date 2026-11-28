@@ -16,5 +16,9 @@ export function getAlertFilter(
   const scope = getRegionalScope(user, "alerts:view");
   if (!scope) return null;
   const { ownerId, ...region } = scope;
-  return ownerId ? { ...region, assignedTo: ownerId } : region;
+  if (ownerId) return { ...region, assignedTo: ownerId };
+  return { ...region, $or: [
+    { type: { $nin: ["task_assigned", "task_due_soon"] } },
+    { assignedTo: user.id },
+  ] };
 }

@@ -1,3 +1,5 @@
+import { publicPredictionJob, predictionUnlocked } from "@/lib/inspection-prediction-state";
+import { syncInspectionImages, UnavailableInspectionImage } from "@/lib/inspection-images";
 import client from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
@@ -57,7 +59,7 @@ export async function GET(
 
     return Response.json({
       success: true,
-      data: { ...inspection, _id: inspection._id.toHexString() },
+      data: { ...inspection, predictionJob: publicPredictionJob(inspection.predictionJob), _id: inspection._id.toHexString() },
     });
   } catch (error) {
     console.error("api/inspections/[id] request failed", error instanceof Error ? error.name : "UnknownError");
@@ -128,9 +130,12 @@ export async function PATCH(
 
     const existing = await inspectionsCollection.findOne(
       { ...filter, _id: new ObjectId(id), status: "pending" },
-      { projection: { regionId: 1 } }
+      { projection: { regionId: 1, prediction: 1, predictionJob: 1, updatedAt: 1 } }
     );
 
+    if (existing?.prediction && existing.predictionJob?.imageUrl && !data.images.includes(existing.predictionJob.imageUrl)) {
+      return Response.json({ message: "Evidence used by an original prediction must be retained" }, { status: 409 });
+    }
     if (existing && existing.regionId !== regionId) {
       if (!ObjectId.isValid(regionId)) {
         return Response.json({ message: "Invalid region ID" }, { status: 400 });
@@ -153,8 +158,10 @@ export async function PATCH(
       const result = await inspectionsCollection.updateOne(
         {
           ...filter,
+          ...predictionUnlocked,
           _id: new ObjectId(id),
           status: "pending",
+          ...(existing && { updatedAt: existing.updatedAt }),
           regionId: existing?.regionId ?? regionId,
         },
         {
@@ -177,6 +184,7 @@ export async function PATCH(
         );
       }
 
+      await syncInspectionImages(new ObjectId(id), data.images, session.user.id, regionId, dbSession);
       await audit({ actorId: session.user.id, action: "inspection.update", resource: "inspection", resourceId: id, regionId: regionId }, dbSession);
 
       return Response.json({
@@ -186,6 +194,9 @@ export async function PATCH(
     }));
   } catch (error) {
     if (error instanceof RequestBodyTooLarge) return error.response();
+    if (error instanceof UnavailableInspectionImage) {
+      return Response.json({ message: "One or more inspection images are unavailable" }, { status: 409 });
+    }
     console.error("api/inspections/[id] request failed", error instanceof Error ? error.name : "UnknownError");
 
     return Response.json(
@@ -237,6 +248,8 @@ export async function DELETE(
     return await client.withSession((dbSession) => dbSession.withTransaction(async () => {
       const deleted = await inspectionsCollection.findOneAndDelete({
         ...filter,
+        ...predictionUnlocked,
+        prediction: { $exists: false },
         _id: new ObjectId(id),
         status: "pending",
         linkedTaskId: { $exists: false },
@@ -252,6 +265,7 @@ export async function DELETE(
         );
       }
 
+      await syncInspectionImages(deleted._id, [], session.user.id, deleted.regionId, dbSession);
       await audit({ actorId: session.user.id, action: "inspection.delete", resource: "inspection", resourceId: id, regionId: deleted.regionId }, dbSession);
 
       return Response.json({

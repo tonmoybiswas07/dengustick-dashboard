@@ -1,5 +1,6 @@
 "use client";
 
+import { PredictionControls, PredictionEvidence } from "./PredictionControls";
 import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ import type { ReviewInspection } from "@/app/types/review";
 import type { DetectionResult } from "@/app/types/inspection";
 
 interface ReviewDialogProps {
+  predictionEnabled: boolean;
   inspection: ReviewInspection;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +51,7 @@ export default function ReviewDialog({
   open,
   onOpenChange,
   onSuccess,
+  predictionEnabled,
 }: ReviewDialogProps) {
   const [loading, setLoading] = useState(false);
 
@@ -136,6 +139,8 @@ export default function ReviewDialog({
     }
   }
 
+  const hasPrediction = !!inspection.prediction || inspection.confidenceScore !== null;
+
   return (
     <Dialog
       open={open}
@@ -163,7 +168,7 @@ export default function ReviewDialog({
               {inspection.images.length > 0 ? (
                 <Image
                   src={inspection.images[selectedImage]}
-                  alt="Inspection evidence"
+                  alt={`Inspection evidence ${selectedImage + 1} of ${inspection.images.length}`}
                   fill
                   unoptimized
                   className="object-contain"
@@ -180,12 +185,18 @@ export default function ReviewDialog({
               )}
             </div>
 
+            {inspection.images[selectedImage] && (
+              <a href={inspection.images[selectedImage]} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+                Open full-size evidence (new tab)
+              </a>
+            )}
             <div className="flex flex-wrap gap-2">
               {inspection.images.map((image, index) => (
                 <button
                   key={`${image}-${index}`}
                   type="button"
                   aria-label={`View image ${index + 1}`}
+                  aria-pressed={selectedImage === index}
                   onClick={() => setSelectedImage(index)}
                   className={`relative size-16 overflow-hidden rounded-lg border-2 ${
                     selectedImage === index
@@ -217,16 +228,22 @@ export default function ReviewDialog({
           </div>
 
           <div className="space-y-5">
+            <PredictionControls enabled={predictionEnabled} inspection={inspection} onQueued={onSuccess} />
+            <PredictionEvidence key={inspection._id} inspection={inspection} />
             <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
-              <h3 className="font-semibold">
-                Original AI Prediction
-              </h3>
+              <h3 className="font-semibold">Original AI Prediction</h3>
+              {!hasPrediction && <p className="text-sm text-muted-foreground">No original prediction is available for this inspection.</p>}
+              {inspection.prediction && (
+                <p className="text-sm text-muted-foreground">
+                  {inspection.prediction.modelName ?? "Model"} · {inspection.prediction.modelVersion}
+                </p>
+              )}
 
               <div className="flex justify-between text-sm">
                 <span>Detection</span>
 
                 <Badge variant="outline" className="capitalize">
-                  {inspection.detectionResult}
+                  {hasPrediction ? inspection.detectionResult : "Unavailable"}
                 </Badge>
               </div>
 
@@ -240,7 +257,7 @@ export default function ReviewDialog({
 
                 <span>
                   {inspection.confidenceScore === null
-                    ? "Not processed"
+                    ? "N/A"
                     : `${(
                         inspection.confidenceScore * 100
                       ).toFixed(1)}%`}

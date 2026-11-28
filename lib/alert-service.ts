@@ -2,7 +2,7 @@ import "server-only";
 
 import { getSystemSettings } from "@/lib/settings";
 import { randomUUID } from "crypto";
-import { MongoServerError, type Document, type Filter, type WithId } from "mongodb";
+import { MongoServerError, type ClientSession, type Document, type Filter, type WithId } from "mongodb";
 
 import {
   alertsCollection,
@@ -28,7 +28,7 @@ type AlertInput = Omit<
   "updatedAt"
 >;
 
-async function createAlert(data: AlertInput) {
+export async function createAlert(data: AlertInput, session?: ClientSession) {
   const now = new Date();
 
   const alert: Omit<Alert, "_id"> = {
@@ -54,14 +54,14 @@ async function createAlert(data: AlertInput) {
         $setOnInsert: alert,
       },
       {
-        upsert: true,
+        upsert: true, session,
       }
     );
 
     return result.upsertedCount;
   } catch (error) {
     if (
-      error instanceof MongoServerError &&
+      !session && error instanceof MongoServerError &&
       error.code === 11000 &&
       error.keyPattern?.type === 1 &&
       error.keyPattern?.sourceId === 1
@@ -120,12 +120,18 @@ export async function syncAlerts(regionId?: string) {
     },
   };
 
-  const [inspections, tasks] = await Promise.all([
+  const [inspections, tasks, upcoming] = await Promise.all([
     settings.positiveDetectionAlerts
       ? inspectionsCollection.aggregate<WithId<Inspection>>(unsyncedSources(inspectionFilter, "positive_detection"), { maxTimeMS: 15_000 }).toArray()
       : [],
     settings.overdueTaskAlerts
       ? fieldTasksCollection.aggregate<WithId<FieldTask>>(unsyncedSources(taskFilter, "overdue_task"), { maxTimeMS: 15_000 }).toArray()
+      : [],
+    settings.overdueTaskAlerts
+      ? fieldTasksCollection.aggregate<WithId<FieldTask>>(unsyncedSources({
+        ...regionFilter, status: taskFilter.status,
+        deadline: { $gte: new Date(), $lte: new Date(Date.now() + 86_400_000) },
+      }, "task_due_soon"), { maxTimeMS: 15_000 }).toArray()
       : [],
   ]);
   let created = 0;
@@ -181,5 +187,13 @@ export async function syncAlerts(regionId?: string) {
     });
   }
 
-  return { created, hasMore: inspections.length > syncBatchSize || tasks.length > syncBatchSize };
+  for (const task of upcoming.slice(0, syncBatchSize)) {
+    created += await createAlert({
+      title: "Field Task Due Soon", message: `The task "${task.title}" is due within 24 hours.`,
+      type: "task_due_soon", severity: "medium", regionId: task.regionId,
+      sourceId: task._id.toString(), sourceType: "field_task", assignedTo: task.assignedTo,
+      location: { district: task.location.district, area: task.location.area },
+    });
+  }
+  return { created, hasMore: inspections.length > syncBatchSize || tasks.length > syncBatchSize || upcoming.length > syncBatchSize };
 }

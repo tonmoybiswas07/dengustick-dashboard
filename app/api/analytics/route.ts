@@ -1,4 +1,4 @@
-import { statisticsQuery } from "@/lib/validations/query";
+import { analyticsDateQuery } from "@/lib/validations/query";
 import { connection } from "next/server";
 import type { Filter } from "mongodb";
 
@@ -37,27 +37,21 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
 
-    const parsed = statisticsQuery.safeParse(Object.fromEntries(searchParams));
+    const parsed = analyticsDateQuery.safeParse(Object.fromEntries(searchParams));
     if (!parsed.success) {
       return Response.json({ message: "Invalid query parameters" }, { status: 400 });
     }
-    const { range, district } = parsed.data;
+    const { range, district, start, end } = parsed.data;
 
     const filter: Filter<Omit<Inspection, "_id">> = {
       ...accessFilter,
     };
 
-    if (range !== "all") {
-      const startDate = new Date(
-        Date.now() - Number(range) * 86400000
-      );
-
-      filter.inspectedAt = {
-        $gte: startDate,
-        $lte: new Date(),
-      };
-    }
-
+    const now = new Date();
+    const periodEnd = end ? new Date(new Date(`${end}T00:00:00+06:00`).getTime() + 86_400_000) : now;
+    const periodStart = start ? new Date(`${start}T00:00:00+06:00`) :
+      range === "all" ? null : new Date(now.getTime() - Number(range) * 86_400_000);
+    if (periodStart) filter.inspectedAt = { $gte: periodStart, $lt: periodEnd };
     if (district !== "all") {
       filter["location.district"] = district;
     }
@@ -419,7 +413,18 @@ export async function GET(request: Request) {
           )
         : null;
 
+    const previousPeriod = periodStart ? await inspectionsCollection.aggregate<{ total: number; verifiedPositive: number }>([
+      { $match: { ...filter, inspectedAt: {
+        $gte: new Date(periodStart.getTime() - (periodEnd.getTime() - periodStart.getTime())),
+        $lt: periodStart,
+      } } },
+      { $group: { _id: null, total: { $sum: 1 },
+        verifiedPositive: { $sum: { $cond: [isPositive, 1, 0] } },
+      } },
+    ], { maxTimeMS: 5000 }).next() ?? { total: 0, verifiedPositive: 0 } : null;
+
     const data: AnalyticsData = {
+      previousPeriod,
       summary: {
         totalInspections: summary.totalInspections,
         verifiedInspections: summary.verifiedInspections,

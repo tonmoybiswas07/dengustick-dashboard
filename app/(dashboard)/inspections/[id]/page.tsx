@@ -1,3 +1,4 @@
+import { auditCollection } from "@/lib/audit";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,7 +16,7 @@ import {
 
 import { requirePermission } from "@/lib/session";
 import { getInspectionFilter } from "@/lib/inspection-access";
-import { inspectionsCollection } from "@/lib/collections";
+import { inspectionsCollection, usersCollection } from "@/lib/collections";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -50,6 +51,24 @@ export default async function InspectionDetailsPage({
   if (!inspection) {
     notFound();
   }
+
+  const activityLabels: Record<string, string> = {
+    "inspection.create": "Inspection created",
+    "inspection.update": "Inspection updated",
+    "inspection.review": "Manually reviewed",
+    "inspection.prediction.queued": "Prediction queued",
+    "inspection.prediction.completed": "Prediction completed",
+    "inspection.prediction.cancelled": "Prediction cancelled",
+    "inspection.prediction.failed": "Prediction failed",
+  };
+  const history = await auditCollection.find({
+    resource: "inspection", resourceId: inspection._id.toHexString(),
+    action: { $in: Object.keys(activityLabels) }, outcome: "success",
+  }).project({ actorId: 1, action: 1, timestamp: 1 }).sort({ timestamp: -1 }).limit(20).toArray();
+  const actorIds = [...new Set(history.map((event) => event.actorId).filter((id): id is string => typeof id === "string" && ObjectId.isValid(id)))];
+  const actors = new Map((await usersCollection.find({ _id: { $in: actorIds.map((id) => new ObjectId(id)) } })
+    .project({ name: 1 }).toArray()).map((actor) => [String(actor._id), actor.name]));
+
 
   const details = [
     {
@@ -273,6 +292,19 @@ export default async function InspectionDetailsPage({
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
             {inspection.notes || "No additional notes."}
           </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>Inspection activity</CardTitle></CardHeader>
+        <CardContent>
+          {history.length === 0 ? <p className="text-sm text-muted-foreground">No recorded activity.</p> : (
+            <ol className="space-y-3 text-sm">
+              {history.map((event) => <li key={String(event._id)} className="border-l-2 border-primary/40 pl-3">
+                <p>{activityLabels[event.action]} · {actors.get(event.actorId ?? "") ?? "Account unavailable"}</p>
+                <time className="text-muted-foreground" dateTime={event.timestamp.toISOString()}>{event.timestamp.toLocaleString("en-GB", { timeZone: "Asia/Dhaka" })}</time>
+              </li>)}
+            </ol>
+          )}
         </CardContent>
       </Card>
     </div>

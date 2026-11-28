@@ -166,6 +166,21 @@ function Sessions() {
     }
   }
 
+  async function revokeOne(id: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/account/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) throw new Error();
+      setSessions((current) => current?.filter((item) => item.id !== id));
+      toast.success("Session signed out");
+    } catch {
+      setError("Unable to revoke this session.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Card>
       <CardHeader><CardTitle>Active sessions</CardTitle></CardHeader>
@@ -181,6 +196,7 @@ function Sessions() {
             <p>{session.current ? "Current session" : "Other session"}</p>
             <p className="text-muted-foreground">{session.userAgent || "Unknown device"}</p>
             <p>Expires {new Date(session.expiresAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka" })}</p>
+            {!session.current && <Button type="button" size="sm" variant="outline" className="mt-2" disabled={busy} onClick={() => revokeOne(session.id)}>Sign out this session</Button>}
           </div>
         ))}
       </CardContent>

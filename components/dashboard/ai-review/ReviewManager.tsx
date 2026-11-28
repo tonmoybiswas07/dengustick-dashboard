@@ -28,7 +28,7 @@ import type {
   ReviewStatistics,
 } from "@/app/types/review";
 
-export default function ReviewManager() {
+export default function ReviewManager({ predictionEnabled }: { predictionEnabled: boolean }) {
   const [inspections, setInspections] =
     useState<ReviewInspection[]>([]);
 
@@ -239,6 +239,7 @@ export default function ReviewManager() {
 
       {selected && (
         <ReviewDialog
+          predictionEnabled={predictionEnabled}
           key={selected._id}
           inspection={selected}
           open={Boolean(selected)}

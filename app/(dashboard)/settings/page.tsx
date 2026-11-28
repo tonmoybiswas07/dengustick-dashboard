@@ -1,3 +1,6 @@
+import { predictionConfigured } from "@/lib/inspection-predictions";
+import { ImageCleanupButton } from "@/components/dashboard/account/ImageCleanupButton";
+import { getImageStorage } from "@/lib/cloudinary-images";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { requirePermission } from "@/lib/session";
@@ -10,6 +13,7 @@ export default async function SettingsPage() {
     getPersonalSettings(user.id),
     user.role === "admin" ? getSystemSettings() : undefined,
   ]);
+  const storageConfigured = user.role === "admin" && !!getImageStorage();
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <h1 className="text-3xl font-bold">Settings</h1>
@@ -22,7 +26,9 @@ export default async function SettingsPage() {
             <p>Environment · {process.env.NODE_ENV}</p>
             <p>Surveillance time zone · Asia/Dhaka</p>
             <p>Storage · MongoDB</p>
-            <p>Image upload and AI inference · Unavailable</p>
+            <p>Managed image storage · {storageConfigured ? "Configured" : "Unavailable"}</p>
+            <p>AI dispatch · {predictionConfigured() ? "Configured" : "Unavailable"}</p>
+            {storageConfigured && <ImageCleanupButton />}
           </CardContent>
         </Card>
       )}

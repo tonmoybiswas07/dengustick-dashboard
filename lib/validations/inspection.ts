@@ -1,3 +1,4 @@
+import { inspectionImagePath, maxInspectionImages } from "../inspection-image-reference.mjs";
 import { z } from "zod";
 
 export const inspectionSchema = z.object({
@@ -20,10 +21,10 @@ export const inspectionSchema = z.object({
     "other",
   ]),
 
-  images: z.array(z.url({ protocol: /^https$/ }).max(2048).refine((value) => {
-    const url = new URL(value);
-    return !url.username && !url.password;
-  }, "Use an HTTPS image URL without credentials")).max(10).default([]),
+  images: z.array(z.union([z.string().regex(inspectionImagePath), z.url({ protocol: /^https$/ }).max(2048).refine((value) => {
+    const url = URL.parse(value);
+    return !!url && !url.username && !url.password;
+  }, "Use an HTTPS image URL without credentials")])).max(maxInspectionImages).default([]),
 
   notes: z.string().trim().max(2000).default(""),
 

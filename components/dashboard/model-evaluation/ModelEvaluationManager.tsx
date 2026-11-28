@@ -31,6 +31,7 @@ export default function ModelEvaluationManager() {
 
   const [range, setRange] = useState("30");
 
+  const [version, setVersion] = useState("");
   const [district, setDistrict] = useState("all");
 
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,7 @@ export default function ModelEvaluationManager() {
           district,
         });
 
+        if (version) params.set("version", version);
         const response = await fetch(
           `/api/model-evaluation?${params}`,
           {
@@ -90,7 +92,7 @@ export default function ModelEvaluationManager() {
     fetchEvaluation();
 
     return () => controller.abort();
-  }, [range, district, refreshKey]);
+  }, [range, district, version, refreshKey]);
 
   function refreshData() {
     setRefreshKey(
@@ -133,6 +135,21 @@ export default function ModelEvaluationManager() {
         </Button>
       </div>
 
+      <label className="block text-sm">Model version
+        <select className="ml-2 rounded border bg-background p-2" value={version} onChange={(event) => setVersion(event.target.value)}>
+          <option value="">All versions</option>
+          {data?.versions.map((row) => <option key={row.version}>{row.version}</option>)}
+        </select>
+      </label>
+      {!loading && !error && data && <section className="space-y-2 rounded-md border p-4 text-sm">
+        <h2 className="font-semibold">Model version comparison</h2>
+        {data.versions.length > 0 ? <ul>{data.versions.map((row) => <li key={row.version}>
+          {row.version} · {row.eligible} eligible · {row.accuracy ?? "N/A"}{row.accuracy !== null && "%"} accuracy
+        </li>)}</ul> : <p>No eligible versioned predictions.</p>}
+        <p>Larvae count error {data.countErrors
+          ? `MAE ${data.countErrors.mae.toFixed(2)} · RMSE ${data.countErrors.rmse.toFixed(2)} · ${data.countErrors.samples} paired counts`
+          : "N/A (no paired prediction and reference counts)"}</p>
+      </section>}
       <EvaluationFilters
         range={range}
         district={district}

@@ -1,5 +1,6 @@
 "use client";
 
+import { ReportSchedules } from "./ReportSchedules";
 import { useEffect, useState } from "react";
 
 import {
@@ -273,7 +274,8 @@ export default function ReportManager({
           </p>
         </div>
 
-        {loading ? (
+        {canCreate && <ReportSchedules />}
+      {loading ? (
           <div className="flex min-h-64 items-center justify-center rounded-xl border bg-card">
             <Loader2 className="size-8 animate-spin text-primary" />
           </div>

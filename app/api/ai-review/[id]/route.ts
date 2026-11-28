@@ -1,3 +1,4 @@
+import { predictionUnlocked } from "@/lib/inspection-prediction-state";
 import client from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { readJSON, RequestBodyTooLarge } from "@/lib/request-security";
@@ -79,6 +80,7 @@ export async function PATCH(
       const reviewed = await inspectionsCollection.findOneAndUpdate(
         {
           ...filter,
+          ...predictionUnlocked,
           _id: new ObjectId(id),
           status: {
             $in: ["pending", "under_review"],

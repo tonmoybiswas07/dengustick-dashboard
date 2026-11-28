@@ -41,13 +41,15 @@ export default function MapFilters({
         <Input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
+          aria-label="Search locations"
+          maxLength={100}
           placeholder="Search location..."
           className="h-10 pl-9"
         />
       </div>
 
       <Select value={district} onValueChange={(value) => { if (value !== null) onDistrictChange(value); }}>
-        <SelectTrigger className="h-10 w-full lg:w-48">
+        <SelectTrigger aria-label="District" className="h-10 w-full lg:w-48">
           <SelectValue placeholder="All Districts" />
         </SelectTrigger>
 
@@ -63,7 +65,7 @@ export default function MapFilters({
       </Select>
 
       <Select value={detection} onValueChange={(value) => { if (value !== null) onDetectionChange(value); }}>
-        <SelectTrigger className="h-10 w-full lg:w-48">
+        <SelectTrigger aria-label="AI detection" className="h-10 w-full lg:w-48">
           <SelectValue placeholder="All AI Predictions" />
         </SelectTrigger>
 

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { statisticsQuery } from "@/lib/validations/query";
 import { connection } from "next/server";
 import type { Document } from "mongodb";
@@ -47,11 +48,11 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
 
-        const parsed = statisticsQuery.safeParse(Object.fromEntries(searchParams));
+        const parsed = statisticsQuery.extend({ version: z.string().trim().min(1).max(100).optional() }).safeParse(Object.fromEntries(searchParams));
         if (!parsed.success) {
           return Response.json({ message: "Invalid query parameters" }, { status: 400 });
         }
-        const { range, district } = parsed.data;
+        const { range, district, version } = parsed.data;
 
         const regionFilter: Document = {};
 
@@ -139,13 +140,17 @@ export async function GET(request: Request) {
             };
         }
 
-        const [results, districts] = await Promise.all([
+        const selectedFilter = version ? { ...filter, "prediction.modelVersion": version } : filter;
+        const validCount = (field: string) => ({ $and: [
+            { $isNumber: field }, { $gte: [field, 0] }, { $lte: [field, 1_000_000] },
+        ] });
+        const [results, districts, versionRows, countErrors] = await Promise.all([
             inspectionsCollection
                 .aggregate<{
                     summary: EvaluationAggregate[];
                     confidence: ConfidenceAggregate[];
                 }>([
-                    { $match: filter },
+                    { $match: selectedFilter },
 
                     {
                         $addFields: {
@@ -290,6 +295,23 @@ export async function GET(request: Request) {
                 "location.district",
                 regionFilter
             ),
+            inspectionsCollection.aggregate<{ _id: string; eligible: number; correct: number }>([
+                { $match: { ...filter, "prediction.modelVersion": { $type: "string" } } },
+                { $match: { $expr: eligibleExpression } },
+                { $group: { _id: "$prediction.modelVersion", eligible: { $sum: 1 },
+                    correct: { $sum: { $cond: [{ $eq: ["$detectionResult", "$review.verifiedDetectionResult"] }, 1, 0] } },
+                } },
+                { $sort: { eligible: -1, _id: 1 } }, { $limit: 20 },
+            ], { maxTimeMS: 5000 }).toArray(),
+            inspectionsCollection.aggregate<{ samples: number; mae: number; rmse: number }>([
+                { $match: { ...selectedFilter, status: "verified", "prediction.modelVersion": { $type: "string", ...(version && { $eq: version }) } } },
+                { $match: { $expr: { $and: [validCount("$prediction.larvaeCount"), validCount("$review.verifiedLarvaeCount")] } } },
+                { $project: { difference: { $subtract: ["$prediction.larvaeCount", "$review.verifiedLarvaeCount"] } } },
+                { $group: { _id: null, samples: { $sum: 1 }, mae: { $avg: { $abs: "$difference" } },
+                    mse: { $avg: { $multiply: ["$difference", "$difference"] } },
+                } },
+                { $project: { _id: 0, samples: 1, mae: 1, rmse: { $sqrt: "$mse" } } },
+            ], { maxTimeMS: 5000 }).next(),
         ]);
 
         const result = results[0];
@@ -336,6 +358,8 @@ export async function GET(request: Request) {
         );
 
         const data: ModelEvaluationData = {
+            versions: versionRows.map((row) => ({ version: row._id, eligible: row.eligible, accuracy: calculatePercentage(row.correct, row.eligible) })),
+            countErrors,
             metrics: calculateMetrics(confusionMatrix),
 
             confusionMatrix,
